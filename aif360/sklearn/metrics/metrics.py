@@ -452,7 +452,7 @@ def mdss_bias_scan(y_true, y_pred, dataset=None, pos_label=1, privileged=True, n
     :param y_pred (array-like): estimated targets as returned by a classifier
     :param dataset (dataframe optional): the dataset (containing the features) the classifier was trained on. If not specified, the subset is returned as indices.
     :param pos_label (scalar, optional): label of the positive class
-    :param privileged (bool, optional): flag for group to scan for - privileged group (True) or unprivileged group (False)
+    :param privileged (bool, optional): flag fov r group to scan for - privileged group (True) or unprivileged group (False)
     :param num_iters (scalar, optional): number of iterations
     :param penalty: penalty coefficient. Should be positive
     """

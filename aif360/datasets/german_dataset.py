@@ -6,7 +6,7 @@ from aif360.datasets import StandardDataset
 
 
 default_mappings = {
-    'label_maps': [{1.0: 'Good Credit', 2.0: 'Bad Credit'}],
+        'label_maps': [{1.0: 'Good Credit', 2.0: 'Bad Credit'}],
     'protected_attribute_maps': [{1.0: 'Male', 0.0: 'Female'},
                                  {1.0: 'Old', 0.0: 'Young'}],
 }

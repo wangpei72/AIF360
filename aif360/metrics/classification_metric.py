@@ -544,7 +544,7 @@ class ClassificationMetric(BinaryLabelDatasetMetric):
         return self.ratio(self.false_discovery_rate)
 
     def average_odds_difference(self):
-        r"""Average of difference in FPR and TPR for unprivileged and privileged
+        r"""Average of difference in False Positive Rates and TPR for unprivileged and privileged
         groups:
 
         .. math::
@@ -678,9 +678,9 @@ class ClassificationMetric(BinaryLabelDatasetMetric):
                 between values at different parts of the distribution.
 
         References:
-            .. [3] T. Speicher, H. Heidari, N. Grgic-Hlaca, K. P. Gummadi, A. Singla, A. Weller, and M. B. Zafar,
-               "A Unified Approach to Quantifying Algorithmic Unfairness: Measuring Individual and Group Unfairness via Inequality Indices,"
-               ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, 2018.
+                .. [3] T. Speicher, H. Heidari, N. Grgic-Hlaca, K. P. Gummadi, A. Singla, A. Weller, and M. B. Zafar,
+                   "A Unified Approach to Quantifying Algorithmic Unfairness: Measuring Individual and Group Unfairness via Inequality Indices,"
+                   ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, 2018.
         """
         y_pred = self.classified_dataset.labels.ravel()
         y_true = self.dataset.labels.ravel()

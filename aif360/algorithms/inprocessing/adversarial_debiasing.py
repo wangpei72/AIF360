@@ -76,10 +76,13 @@ class AdversarialDebiasing(Transformer):
         self.protected_attributes_ph = None
         self.true_labels_ph = None
         self.pred_labels = None
+    # 继承自Transformer的类的构造函数 内部包含了参数初始化 从seed开始有默认参数值
 
     def _classifier_model(self, features, features_dim, keep_prob):
         """Compute the classifier predictions for the outcome variable.
+        计算分类器对outcome 变量（特征）的推理预测
         """
+        # TODO 看来，对自己DNN的移植重点就在这里了吧，感觉不弄清楚原理和代码逻辑的话很难做啊
         with tf.variable_scope("classifier_model"):
             W1 = tf.get_variable('W1', [features_dim, self.classifier_num_hidden_units],
                                   initializer=tf.initializers.glorot_uniform(seed=self.seed1))
@@ -99,11 +102,13 @@ class AdversarialDebiasing(Transformer):
 
     def _adversary_model(self, pred_logits, true_labels):
         """Compute the adversary predictions for the protected attribute.
+        计算Adversary对于敏感属性的预测值
         """
+        # TODO adver很简单也够用 因此这里不需要重新乱动基本上属于是，主要移植DNN的模块，这里读一下代码感觉就是直接用tf的壳子堆公式而已 也不是很难吗
         with tf.variable_scope("adversary_model"):
             c = tf.get_variable('c', initializer=tf.constant(1.0))
             s = tf.sigmoid((1 + tf.abs(c)) * pred_logits)
-
+            # glorot函数需要查一下
             W2 = tf.get_variable('W2', [3, 1],
                                  initializer=tf.initializers.glorot_uniform(seed=self.seed4))
             b2 = tf.Variable(tf.zeros(shape=[1]), name='b2')
@@ -116,7 +121,7 @@ class AdversarialDebiasing(Transformer):
     def fit(self, dataset):
         """Compute the model parameters of the fair classifier using gradient
         descent.
-
+        利用梯度下降计算公平的分类器的模型参数-相当于整个去偏算法的主体部分
         Args:
             dataset (BinaryLabelDataset): Dataset containing true labels.
 
@@ -124,6 +129,7 @@ class AdversarialDebiasing(Transformer):
             AdversarialDebiasing: Returns self.
         """
         if tf.executing_eagerly():
+            # 在紧急执行的模式下，汇报运行时错误，因为对抗去偏不是即时工作的，需要在脚本开头加上关闭该模式的声明
             raise RuntimeError("AdversarialDebiasing does not work in eager "
                     "execution mode. To fix, add `tf.disable_eager_execution()`"
                     " to the top of the calling script.")
@@ -135,64 +141,104 @@ class AdversarialDebiasing(Transformer):
 
         # Map the dataset labels to 0 and 1.
         temp_labels = dataset.labels.copy()
-
+        # dataset.labels应该是一个nparray 下列temp_labels应该是对所有的 所有在源标签中是fav的 temptabels数组的该行， 第1列数值赋值为1
+        # 是unfav标签的行，的第一列处，赋值为0
         temp_labels[(dataset.labels == dataset.favorable_label).ravel(),0] = 1.0
         temp_labels[(dataset.labels == dataset.unfavorable_label).ravel(),0] = 0.0
 
         with tf.variable_scope(self.scope_name):
+            # scopename在类构造时必须传入，个人理解表示是原来的分类器还是adversary的训练参数空间
             num_train_samples, self.features_dim = np.shape(dataset.features)
 
-            # Setup placeholders
+            # Setup placeholders 设立tf的placeholder 相当于在建立计算的图
+            # 依次是： 特征输入（分类器是x，adversary可能是y_, y,z或者单纯y_,z）
+            # 敏感属性 维度是1
+            # 真实标签 维度也是1
+            # keep_prob dropout函数中的参数
             self.features_ph = tf.placeholder(tf.float32, shape=[None, self.features_dim])
             self.protected_attributes_ph = tf.placeholder(tf.float32, shape=[None,1])
             self.true_labels_ph = tf.placeholder(tf.float32, shape=[None,1])
             self.keep_prob = tf.placeholder(tf.float32)
 
             # Obtain classifier predictions and classifier loss
+            # 获得分类器的推理和分类器的loss损失
+            # 预测的标签， 预测的logits
             self.pred_labels, pred_logits = self._classifier_model(self.features_ph, self.features_dim, self.keep_prob)
             pred_labels_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=self.true_labels_ph, logits=pred_logits))
 
             if self.debias:
+                # debias是逻辑控制开关，表示是否是去偏模式
                 # Obtain adversary predictions and adversary loss
+                # 获得adversary的预测和loss
+                # 输出一敏感属性标签
+                # 输出二敏感属性logits是adver模型的输出，
+                # 输入一 predlogits分类器带出来的logits，相当于y_
+                # 输入二 真是的标签 即y
                 pred_protected_attributes_labels, pred_protected_attributes_logits = self._adversary_model(pred_logits, self.true_labels_ph)
+                # 敏感属性的损失，tf的reducemean函数 内嵌一个交叉熵，输入标签是敏感属性的placeholder ，logits是预测的敏感属性logits即输出二
                 pred_protected_attributes_loss = tf.reduce_mean(
-                    tf.nn.sigmoid_cross_entropy_with_logits(labels=self.protected_attributes_ph, logits=pred_protected_attributes_logits))
+                    tf.nn.sigmoid_cross_entropy_with_logits(labels=self.protected_attributes_ph,
+                                                            logits=pred_protected_attributes_logits))
 
             # Setup optimizers with learning rates
+            # 设立优化器和学习率
+            # 全局step 开始学习率 lr设置为按照指数衰减的函数进行变换
+            # 优化器是Adam。传入上述学习率参数
             global_step = tf.Variable(0, trainable=False)
             starter_learning_rate = 0.001
             learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
                                                        1000, 0.96, staircase=True)
             classifier_opt = tf.train.AdamOptimizer(learning_rate)
             if self.debias:
+                # 如果开启对抗去偏模式，设置adversary的优化器，和分类器的设置一样
                 adversary_opt = tf.train.AdamOptimizer(learning_rate)
 
+            # 分类器的 变量保存？
             classifier_vars = [var for var in tf.trainable_variables() if 'classifier_model' in var.name]
             if self.debias:
+                # 如果是去偏模式，还要保存adver的参数
                 adversary_vars = [var for var in tf.trainable_variables() if 'adversary_model' in var.name]
                 # Update classifier parameters
+                # 更新分类器的参数，首先要
+                # 记录adver的梯度，由预测敏感属性的loss，和保存分类器的vars数组作为adver优化器计算梯度的函数的参数传入
                 adversary_grads = {var: grad for (grad, var) in adversary_opt.compute_gradients(pred_protected_attributes_loss,
                                                                                       var_list=classifier_vars)}
+            # 这一步标准化 这里用了lambda表达式，即匿名函数，相当于传入了一个参数x的函数， 返回的是x / (tf.norm(x) + np.finfo(np.float32).tiny)
+            # normalize是一个函数？！！确实，下面有调用
             normalize = lambda x: x / (tf.norm(x) + np.finfo(np.float32).tiny)
 
             classifier_grads = []
+            # 创立一个空列表来接受分类器的梯度
             for (grad,var) in classifier_opt.compute_gradients(pred_labels_loss, var_list=classifier_vars):
+                # 算法的理论核心 修改adver的grad值
+                # g是分类器的梯度 h是adver的梯度
                 if self.debias:
+                    # 第一步 标准化 求出adver——grad的单位向量吗？unit 用来之后计算g在h上的投影
+                    #  grad是我们的主角，因为是要用以更新W（分类器的参数）的，所以操作的g是分类器的梯度
+                    # 第二部 减去proj_h g
+                    # 第三步 减去可调项 a * grad(W) *Loss(A)
                     unit_adversary_grad = normalize(adversary_grads[var])
                     grad -= tf.reduce_sum(grad * unit_adversary_grad) * unit_adversary_grad
                     grad -= self.adversary_loss_weight * adversary_grads[var]
+                #     空列表保存原始的或者经过去偏算法计算的grad 和 var
                 classifier_grads.append((grad, var))
+            #     minimizer？损失最小化的意思吗 这一步应该是将自己优化的grad传给优化器
             classifier_minimizer = classifier_opt.apply_gradients(classifier_grads, global_step=global_step)
 
             if self.debias:
                 # Update adversary parameters
+                # 如果开了去偏算法的模式，那么需要更新adver的参数
                 with tf.control_dependencies([classifier_minimizer]):
+                    # 控制依赖的with语句，会先执行classifier_minimizer的操作，在执行下面的
+                    # adver的minimizer ader的优化器 调用函数是minimize 输入预测的敏感属性目前的loss var列表为adver_vars,不需要加上全局step
                     adversary_minimizer = adversary_opt.minimize(pred_protected_attributes_loss, var_list=adversary_vars)#, global_step=global_step)
 
+            # sess开始run，feed 如全局变量初始化器和局部变量初始化器
             self.sess.run(tf.global_variables_initializer())
             self.sess.run(tf.local_variables_initializer())
 
             # Begin training
+            # 开始训练
             for epoch in range(self.num_epochs):
                 shuffled_ids = np.random.choice(num_train_samples, num_train_samples, replace=False)
                 for i in range(num_train_samples//self.batch_size):
@@ -226,7 +272,8 @@ class AdversarialDebiasing(Transformer):
     def predict(self, dataset):
         """Obtain the predictions for the provided dataset using the fair
         classifier learned.
-
+        获取提供的数据集的学习到的公平的模型预测值 但为什么是 transformed dataset 目前的方法父类是一个transform 因此经过去偏后进行预测的数据集
+        ，更改为预测的标签之后，这些数据集将是公平的，同时也是被transformed的数据集了
         Args:
             dataset (BinaryLabelDataset): Dataset containing labels that needs
                 to be transformed.
@@ -262,6 +309,7 @@ class AdversarialDebiasing(Transformer):
 
         # Mutated, fairer dataset with new labels
         dataset_new = dataset.copy(deepcopy = True)
+        # 在这里 被提供的数据集的label被重新赋值了，可以基于此计算几个公平性指标，真的有点绕啊
         dataset_new.scores = np.array(pred_labels, dtype=np.float64).reshape(-1, 1)
         dataset_new.labels = (np.array(pred_labels)>0.5).astype(np.float64).reshape(-1,1)
 
