@@ -29,7 +29,8 @@ class AdversarialDebiasingDnn5(Transformer):
                  num_epochs=1000,
                  batch_size=128,
                  classifier_num_hidden_units=200,
-                 debias=True):
+                 debias=True,
+                 save = True):
         super(AdversarialDebiasingDnn5, self).__init__(
             unprivileged_groups=unprivileged_groups,
             privileged_groups=privileged_groups)
@@ -49,6 +50,7 @@ class AdversarialDebiasingDnn5(Transformer):
         self.batch_size = batch_size
         self.classifier_num_hidden_units = classifier_num_hidden_units
         self.debias = debias
+        self.save = save
 
         self.features_dim = None
         self.features_ph = None
@@ -85,6 +87,21 @@ class AdversarialDebiasingDnn5(Transformer):
             pred_protected_attribute_label = tf.sigmoid(pred_protected_attribute_logit)
 
             return pred_protected_attribute_label, pred_protected_attribute_logit
+
+
+    def save_model(self, sess, train_dir, filename):
+        if self.save:
+            train_dir = os.path.join(train_dir, str(self.num_epochs - 1))
+            if not os._exists(train_dir):
+                os.makedirs(train_dir)
+            save_path = os.path.join(train_dir, filename)
+            saver = tf.train.Saver()
+            saver.save(sess, save_path)
+            print("Completed model training and saved at: " +
+                         str(save_path))
+        else:
+            print("Completed model training.")
+
 
     def fit(self, dataset):
         """Compute the model parameters of the fair classifier using gradient
@@ -205,6 +222,7 @@ class AdversarialDebiasingDnn5(Transformer):
             self.sess.run(tf.global_variables_initializer())
             self.sess.run(tf.local_variables_initializer())
 
+
             # Begin training
             # 开始训练
             for epoch in range(self.num_epochs):
@@ -232,9 +250,15 @@ class AdversarialDebiasingDnn5(Transformer):
                         _, pred_labels_loss_value = self.sess.run(
                             [classifier_minimizer,
                              pred_labels_loss], feed_dict=batch_feed_dict)
+
                         if i % 200 == 0:
                             print("epoch %d; iter: %d; batch classifier loss: %f" % (
                             epoch, i, pred_labels_loss_value))
+            if self.save:
+                if self.debias:
+                    self.save_model(self, self.sess, '../adebias-model/' + 'adult/', 'test.model')
+                else:
+                    self.save_model(self, self.sess, '../org-model/' + 'adult/', 'test.model')
         return self
 
     def predict(self, dataset):
