@@ -1,5 +1,7 @@
 import numpy as np
 
+from aif360.load_model.util_functions import gradient_graph
+
 try:
     import tensorflow.compat.v1 as tf
 except ImportError as error:
@@ -57,6 +59,8 @@ class AdversarialDebiasingDnn5(Transformer):
         self.protected_attributes_ph = None
         self.true_labels_ph = None
         self.pred_labels = None
+        self.preds_symbolic_output = None
+
 
     def _classifier_model(self, features, features_dim, keep_prob):
         """Compute the classifier predictions for the outcome variable.
@@ -65,6 +69,7 @@ class AdversarialDebiasingDnn5(Transformer):
         with tf.variable_scope("classifier_model"):
             model = dnn(input_shape=(None, features_dim), nb_classes=1)
             dnn5 = model(features)
+            self.preds_symbolic_output = dnn5
             pred_logit = model.get_logits(features)
             get_probs = model.get_probs(features)
             pred_label = get_probs
@@ -261,11 +266,12 @@ class AdversarialDebiasingDnn5(Transformer):
                     self.save_model('../org-model/adult/', 'test.model')
         return self
 
-    def predict(self, dataset, model_path='../org-model/adult/'):
+    def predict(self, dataset, model_path='../org-model/adult/999/'):
+        grad_0 = gradient_graph(self.features_ph, self.preds_symbolic_output)
         if self.seed is not None:
             np.random.seed(self.seed)
         if self.debias:
-            model_path = '../adebias-model/adult/test.model'
+            model_path = '../adebias-model/adult/999/test.model'
         else:
             model_path = model_path
 
