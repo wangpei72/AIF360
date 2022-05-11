@@ -89,14 +89,14 @@ class AdversarialDebiasingDnn5(Transformer):
             return pred_protected_attribute_label, pred_protected_attribute_logit
 
 
-    def save_model(self, sess, train_dir, filename):
+    def save_model(self, train_dir, filename):
         if self.save:
             train_dir = os.path.join(train_dir, str(self.num_epochs - 1))
             if not os._exists(train_dir):
                 os.makedirs(train_dir)
             save_path = os.path.join(train_dir, filename)
             saver = tf.train.Saver()
-            saver.save(sess, save_path)
+            saver.save(self.sess, save_path)
             print("Completed model training and saved at: " +
                          str(save_path))
         else:
@@ -256,9 +256,9 @@ class AdversarialDebiasingDnn5(Transformer):
                             epoch, i, pred_labels_loss_value))
             if self.save:
                 if self.debias:
-                    self.save_model(self, self.sess, '../adebias-model/' + 'adult/', 'test.model')
+                    self.save_model('../adebias-model/adult/', 'test.model')
                 else:
-                    self.save_model(self, self.sess, '../org-model/' + 'adult/', 'test.model')
+                    self.save_model('../org-model/adult/', 'test.model')
         return self
 
     def predict(self, dataset):
