@@ -261,9 +261,16 @@ class AdversarialDebiasingDnn5(Transformer):
                     self.save_model('../org-model/adult/', 'test.model')
         return self
 
-    def predict(self, dataset):
+    def predict(self, dataset, model_path='../org-model/adult/'):
         if self.seed is not None:
             np.random.seed(self.seed)
+        if self.debias:
+            model_path = '../adebias-model/adult/test.model'
+        else:
+            model_path = model_path
+
+        saver = tf.train.Saver()
+        saver.restore(self.sess, model_path)
 
         num_test_samples, _ = np.shape(dataset.features)
 
