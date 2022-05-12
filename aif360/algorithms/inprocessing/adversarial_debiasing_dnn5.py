@@ -29,7 +29,7 @@ class AdversarialDebiasingDnn5(Transformer):
                  sess,
                  seed=None,
                  adversary_loss_weight=0.1,
-                 num_epochs=10,
+                 num_epochs=1000,
                  batch_size=128,
                  classifier_num_hidden_units=200,
                  debias=True,
@@ -54,6 +54,7 @@ class AdversarialDebiasingDnn5(Transformer):
         self.classifier_num_hidden_units = classifier_num_hidden_units
         self.debias = debias
         self.save = save
+
 
         self.features_dim = None
         self.features_ph = None
@@ -80,7 +81,7 @@ class AdversarialDebiasingDnn5(Transformer):
         """Compute the adversary predictions for the protected attribute.
         计算Adversary对于敏感属性的预测值
         """
-        with tf.variable_scope("adversary_model"):
+        with tf.variable_scope("adversary_model", reuse=tf.AUTO_REUSE):
             c = tf.get_variable('c', initializer=tf.constant(1.0))
             s = tf.sigmoid((1 + tf.abs(c)) * pred_logits)
             # glorot函数需要查一下
@@ -104,6 +105,7 @@ class AdversarialDebiasingDnn5(Transformer):
             saver.save(self.sess, save_path)
             print("Completed model training and saved at: " +
                          str(save_path))
+            self.model_path = save_path
         else:
             print("Completed model training.")
 
@@ -260,10 +262,13 @@ class AdversarialDebiasingDnn5(Transformer):
                             epoch, i, pred_labels_loss_value))
             if self.save:
                 if self.debias:
-                    self.save_model('../adebias-model-merge/adult/', 'test.model')
+                    self.save_model('../adebias-model-fix/adult/', 'test.model')
                 else:
-                    self.save_model('../org-model-merge/adult/', 'test.model')
+                    self.save_model('../org-model/adult-fix/', 'test.model')
         return self
+
+    def my_normalize(self, x):
+        return x / (tf.norm(x) + np.finfo(np.float32).tiny)
 
     def fit_without_train(self, dataset):
         if tf.executing_eagerly():
@@ -313,13 +318,13 @@ class AdversarialDebiasingDnn5(Transformer):
                 adversary_vars = [var for var in tf.trainable_variables() if 'adversary_model' in var.name]
                 adversary_grads = {var: grad for (grad, var) in adversary_opt.compute_gradients(pred_protected_attributes_loss,
                                                                                       var_list=classifier_vars)}
-            normalize = lambda x: x / (tf.norm(x) + np.finfo(np.float32).tiny)
+            # normalize = lambda x: x / (tf.norm(x) + np.finfo(np.float32).tiny)
 
             classifier_grads = []
             for (grad,var) in classifier_opt.compute_gradients(pred_labels_loss, var_list=classifier_vars):
 
                 if self.debias:
-                    unit_adversary_grad = normalize(adversary_grads[var])
+                    unit_adversary_grad = self.my_normalize(adversary_grads[var])
                     grad -= tf.reduce_sum(grad * unit_adversary_grad) * unit_adversary_grad
                     grad -= self.adversary_loss_weight * adversary_grads[var]
 
@@ -334,133 +339,15 @@ class AdversarialDebiasingDnn5(Transformer):
             self.sess.run(tf.global_variables_initializer())
             self.sess.run(tf.local_variables_initializer())
 
-    def fit_and_pred(self, dataset, dataset_test, model_path='../org-model-merge/adult/9/test.model', graph_dir=
+    def fit_and_pred(self, dataset, dataset_test, graph_dir=
                      '../org-model-merge/adult/graphlog'):
         self.fit(dataset)
 
         tf.train.write_graph(self.sess.graph_def, graph_dir, 'testmodel.pbtxt')
-        if self.debias:
-            model_path = '../adebias-model-merge/adult/9/test.model'
-        else:
-            model_path = model_path
+
         dataset_new_train, dataset_new_test = self.predict(dataset), self.predict(dataset_test)
         return dataset_new_train, dataset_new_test
 
-
-
-    def predict_with_define(self, dataset, model_path='../org-model-merge/adult/9/test.model'):
-        if tf.executing_eagerly():
-            # 在紧急执行的模式下，汇报运行时错误，因为对抗去偏不是即时工作的，需要在脚本开头加上关闭该模式的声明
-            raise RuntimeError("AdversarialDebiasing does not work in eager "
-                    "execution mode. To fix, add `tf.disable_eager_execution()`"
-                    " to the top of the calling script.")
-
-        # tf.reset_default_graph()
-
-        if self.seed is not None:
-            np.random.seed(self.seed)
-        ii32 = np.iinfo(np.int32)
-        self.seed1, self.seed2, self.seed3, self.seed4 = np.random.randint(ii32.min, ii32.max, size=4)
-
-        # Map the dataset labels to 0 and 1.
-        temp_labels = dataset.labels.copy()
-        temp_labels[(dataset.labels == dataset.favorable_label).ravel(),0] = 1.0
-        temp_labels[(dataset.labels == dataset.unfavorable_label).ravel(),0] = 0.0
-
-        with tf.variable_scope(self.scope_name):
-            # scopename在类构造时必须传入，个人理解表示是原来的分类器还是adversary的训练参数空间
-            num_train_samples, self.features_dim = np.shape(dataset.features)
-
-            self.features_ph = tf.placeholder(tf.float32, shape=[None, self.features_dim])
-            self.protected_attributes_ph = tf.placeholder(tf.float32, shape=[None,1])
-            self.true_labels_ph = tf.placeholder(tf.float32, shape=[None,1])
-            self.keep_prob = tf.placeholder(tf.float32)
-
-            # Obtain classifier predictions and classifier loss
-            self.pred_labels, pred_logits = self._classifier_model(self.features_ph, self.features_dim, self.keep_prob)
-            pred_labels_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=self.true_labels_ph, logits=pred_logits))
-
-            if self.debias:
-                pred_protected_attributes_labels, pred_protected_attributes_logits = self._adversary_model(pred_logits, self.true_labels_ph)
-                pred_protected_attributes_loss = tf.reduce_mean(
-                    tf.nn.sigmoid_cross_entropy_with_logits(labels=self.protected_attributes_ph,
-                                                            logits=pred_protected_attributes_logits))
-
-            global_step = tf.Variable(0, trainable=False)
-            starter_learning_rate = 0.001
-            learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-                                                       1000, 0.96, staircase=True)
-            classifier_opt = tf.train.AdamOptimizer(learning_rate)
-            if self.debias:
-                adversary_opt = tf.train.AdamOptimizer(learning_rate)
-
-            classifier_vars = [var for var in tf.trainable_variables() if 'classifier_model' in var.name]
-            if self.debias:
-                adversary_vars = [var for var in tf.trainable_variables() if 'adversary_model' in var.name]
-
-                adversary_grads = {var: grad for (grad, var) in adversary_opt.compute_gradients(pred_protected_attributes_loss,
-                                                                                      var_list=classifier_vars)}
-            normalize = lambda x: x / (tf.norm(x) + np.finfo(np.float32).tiny)
-            classifier_grads = []
-            for (grad,var) in classifier_opt.compute_gradients(pred_labels_loss, var_list=classifier_vars):
-                if self.debias:
-                    unit_adversary_grad = normalize(adversary_grads[var])
-                    grad -= tf.reduce_sum(grad * unit_adversary_grad) * unit_adversary_grad
-                    grad -= self.adversary_loss_weight * adversary_grads[var]
-                classifier_grads.append((grad, var))
-            classifier_minimizer = classifier_opt.apply_gradients(classifier_grads, global_step=global_step)
-
-            if self.debias:
-                with tf.control_dependencies([classifier_minimizer]):
-                    adversary_minimizer = adversary_opt.minimize(pred_protected_attributes_loss, var_list=adversary_vars)#, global_step=global_step)
-
-        if self.debias:
-            model_path = '../adebias-model-merge/adult/9/test.model'
-        else:
-            model_path = model_path
-
-        saver = tf.train.Saver()
-        saver.restore(self.sess, model_path)
-
-        num_test_samples, _ = np.shape(dataset.features)
-
-        samples_covered = 0
-        pred_labels = []
-        while samples_covered < num_test_samples:
-            start = samples_covered
-            end = samples_covered + self.batch_size
-            if end > num_test_samples:
-                end = num_test_samples
-            batch_ids = np.arange(start, end)
-            batch_features = dataset.features[batch_ids]
-            batch_labels = np.reshape(dataset.labels[batch_ids], [-1,1])
-            batch_protected_attributes = np.reshape(dataset.protected_attributes[batch_ids][:,
-                                         dataset.protected_attribute_names.index(self.protected_attribute_name)], [-1,1])
-
-            batch_feed_dict = {self.features_ph: batch_features,
-                               self.true_labels_ph: batch_labels,
-                               self.protected_attributes_ph: batch_protected_attributes,
-                               self.keep_prob: 1.0}
-
-            pred_labels += self.sess.run(self.pred_labels, feed_dict=batch_feed_dict)[:,0].tolist()
-            samples_covered += len(batch_features)
-
-        # Mutated, fairer dataset with new labels
-        dataset_new = dataset.copy(deepcopy = True)
-        # 在这里 被提供的数据集的label被重新赋值了，可以基于此计算几个公平性指标，真的有点绕啊
-        dataset_new.scores = np.array(pred_labels, dtype=np.float64).reshape(-1, 1)
-        dataset_new.labels = (np.array(pred_labels)>0.5).astype(np.float64).reshape(-1,1)
-
-
-        # Map the dataset labels to back to their original values.
-        temp_labels = dataset_new.labels.copy()
-
-        temp_labels[(dataset_new.labels == 1.0).ravel(), 0] = dataset.favorable_label
-        temp_labels[(dataset_new.labels == 0.0).ravel(), 0] = dataset.unfavorable_label
-
-        dataset_new.labels = temp_labels.copy()
-
-        return dataset_new
 
     def predict(self, dataset):
         num_test_samples, _ = np.shape(dataset.features)
@@ -503,19 +390,15 @@ class AdversarialDebiasingDnn5(Transformer):
 
         return dataset_new
 
-    def predict_with_load_gra(self,dataset, model_path='../org-model-merge/adult/9/test.model', graph_dir=
-                     '../org-model-merge/adult/graphlog/'):
-        # with tf.gfile.FastGFile  (graph_dir + 'testmodel.pbtxt', 'rb') as f:
-        #     graph_def = tf.GraphDef()
-        #     graph_def.ParseFromString(f.read())
-        #     self.sess.graph.as_default()
-        #     tf.import_graph_def(graph_def)
+    def predict_with_load_gra(self, dataset):
         self.fit_without_train(dataset)
-        if self.debias:
-            model_path = '../adebias-model-merge/adult/9/test.model'
+        if self.model_path is None:
+            if self.debias:
+                model_path = '../adebias-model/adult/999/test.model'
+            else:
+                model_path = '../org-model/adult/999/test.model'
         else:
-            model_path = model_path
-
+            model_path = self.model_path
         # saver = tf.train.Saver()
         saver = tf.train.import_meta_graph(model_path + '.meta')
         saver.restore(self.sess, model_path)
