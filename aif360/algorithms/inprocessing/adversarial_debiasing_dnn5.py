@@ -266,7 +266,7 @@ class AdversarialDebiasingDnn5(Transformer):
                     self.save_model('../org-model/adult/', 'test.model')
         return self
 
-    def predict(self, dataset, model_path='../org-model/adult/999/test.model'):
+    def predict(self, dataset, model_path='../org-model/adult/99/test.model'):
         if tf.executing_eagerly():
             # 在紧急执行的模式下，汇报运行时错误，因为对抗去偏不是即时工作的，需要在脚本开头加上关闭该模式的声明
             raise RuntimeError("AdversarialDebiasing does not work in eager "
@@ -333,7 +333,7 @@ class AdversarialDebiasingDnn5(Transformer):
         if self.seed is not None:
             np.random.seed(self.seed)
         if self.debias:
-            model_path = '../adebias-model/adult/999/test.model'
+            model_path = '../adebias-model/adult/99/test.model'
         else:
             model_path = model_path
 
