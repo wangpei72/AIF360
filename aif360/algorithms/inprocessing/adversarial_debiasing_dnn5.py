@@ -62,6 +62,7 @@ class AdversarialDebiasingDnn5(Transformer):
         self.true_labels_ph = None
         self.pred_labels = None
         self.preds_symbolic_output = None
+        self.classifier_model = None
 
 
     def _classifier_model(self, features, features_dim, keep_prob):
@@ -72,6 +73,7 @@ class AdversarialDebiasingDnn5(Transformer):
             model = dnn(input_shape=(None, features_dim), nb_classes=1)
             dnn5 = model(features)
             self.preds_symbolic_output = dnn5
+            self.classifier_model = model
             pred_logit = model.get_logits(features)
             get_probs = model.get_probs(features)
             pred_label = get_probs
@@ -338,6 +340,7 @@ class AdversarialDebiasingDnn5(Transformer):
 
             self.sess.run(tf.global_variables_initializer())
             self.sess.run(tf.local_variables_initializer())
+        return self
 
     def fit_and_pred(self, dataset, dataset_test, graph_dir=
                      '../org-model-merge/adult/graphlog'):
