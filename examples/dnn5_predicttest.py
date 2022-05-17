@@ -91,7 +91,9 @@ if __name__ == '__main__':
                                            unprivileged_groups=unprivileged_groups,
                                            scope_name='plain_classifier',
                                            debias=False,
-                                           sess=sess)
+                                           sess=sess,
+                                           origmodel_path='../org-model-fixnc/adult/29/test.model',
+                                           debiasmodel_path='../adebias-model-fixnc/adult/29/test.model')
     dataset_nodebiasing_train = plain_model.predict_with_load_gra(dataset_orig_train)
     dataset_nodebiasing_test = plain_model.predict_with_load_gra(dataset_orig_test)
     print('ok, Plain model - without debiasing - dataset metrics:')
@@ -104,7 +106,10 @@ if __name__ == '__main__':
                                               unprivileged_groups=unprivileged_groups,
                                               scope_name='debiased_classifier',
                                               debias=True,
-                                              sess=sess)
+                                              sess=sess,
+                                              origmodel_path='../org-model-fixnc/adult/29/test.model',
+                                              debiasmodel_path='../adebias-model-fixnc/adult/29/test.model'
+                                              )
     # dataset_debiasing_train_, dataset_debiasing_test_ = debiased_model.fit_and_pred(dataset_orig_train,
     #                                                                                 dataset_orig_test)
     # dataset_debiasing_train = debiased_model.predict_with_load_gra(dataset_orig_train)

@@ -2,7 +2,7 @@ from aif360.datasets import AdultDataset, GermanDataset, CompasDataset
 import pandas as pd
 import numpy as np
 
-def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=False):
+def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=False, convert=True):
     def custom_preprocessing(df):
         """The custom pre-processing function is adapted from
             https://github.com/fair-preprocessing/nips2017/blob/master/Adult/code/Generate_Adult_Data.ipynb
@@ -73,8 +73,7 @@ def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=F
     # protected attribute maps
     all_protected_attribute_maps = {"sex": {1.0: 'Male', 0.0: 'Female'},
                                     "race": {1.0: 'White', 0.0: 'Non-white'}}
-
-    return AdultDataset(
+    dataset_adult = AdultDataset(
         label_name=Y_features[0],
         favorable_classes=['>50K', '>50K.'],
         protected_attribute_names=D_features,
@@ -87,6 +86,20 @@ def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=F
                   'protected_attribute_maps': [all_protected_attribute_maps[x]
                                 for x in D_features]},
         custom_preprocessing=custom_preprocessing)
+
+    return dataset_adult
+
+
+def convert_two_dims_labels(dataset):
+    temp = []
+    for i in dataset.labels:
+        if i == 0.0:
+            temp.append([1.0, 0.0])
+        else:
+            temp.append([0.0, 1.0])
+    arr = np.array(temp, dtype=np.float64)
+    return arr
+
 
 def load_preproc_data_compas(protected_attributes=None):
     def custom_preprocessing(df):

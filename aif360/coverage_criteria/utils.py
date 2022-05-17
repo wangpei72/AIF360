@@ -344,9 +344,9 @@ def calculate_layers(sess, x, model, feed_dict, input_data, store_path, num):
             layers_output.append(layer_op)
     layers_output = np.asarray(layers_output)
     if num is not str:
-        np.save(store_path + "layers_output_" + str(num) + ".npy", layers_output)
+        np.save(store_path + "layers_output.npy", layers_output)
     else:
-        np.save(store_path + "layers_output_" + num + ".npy", layers_output)
+        np.save(store_path + "layers_output.npy", layers_output)
     del layer_op
     return layers_output
 
@@ -408,7 +408,7 @@ def get_single_full_test_sample(raw_data_path_prefix='../npy_data/adult-aif360pr
     # Object used to keep track of (and return) key accuracies
     m = np.load(raw_data_path_prefix + 'features-test.npy')
     n = np.load(raw_data_path_prefix + 'labels-test.npy')
-    X_train  = np.load(raw_data_path_prefix + 'features-train.npy')
+    X_train = np.load(raw_data_path_prefix + 'features-train.npy')
     Y_train = np.load(raw_data_path_prefix + 'labels-train.npy')
 
     X_test = m

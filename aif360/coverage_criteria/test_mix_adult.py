@@ -16,11 +16,14 @@ import math
 sys.path.append("../")
 
 
-from coverage_criteria.utils import neuron_boundary, calculate_layers, update_multi_coverage_neuron, calculate_coverage_layer, init_coverage_metric, get_single_sample_from_instances_set
+from aif360.coverage_criteria.utils import neuron_boundary, calculate_layers, update_multi_coverage_neuron, \
+    calculate_coverage_layer, init_coverage_metric, get_single_sample_from_instances_set, get_single_full_test_sample
 
-from load_model.network import *
-from load_model.layer import *
+from aif360.load_model.network import *
+from aif360.load_model.layer import *
+from aif360.algorithms.preprocessing.optim_preproc_helpers.data_preproc_functions import load_preproc_data_adult, load_preproc_data_compas, load_preproc_data_german
 
+from aif360.algorithms.inprocessing.adversarial_debiasing_dnn5 import AdversarialDebiasingDnn5
 FLAGS = flags.FLAGS
 
 def dnn5(input_shape=(None, 13), nb_classes=2):
@@ -57,27 +60,151 @@ def model_load(datasets):
     sess = tf.Session(config=config)
     print("Created TensorFlow session.")
 
-    input_shape = (None, 13)
-    nb_classes = 2
+    dataset_orig = load_preproc_data_adult()
+
+    privileged_groups = [{'sex': 1}]
+    unprivileged_groups = [{'sex': 0}]
+
+    dataset_orig_train, dataset_orig_test = dataset_orig.split([0.8], shuffle=True)
+    plain_model = AdversarialDebiasingDnn5(privileged_groups=privileged_groups,
+                                           unprivileged_groups=unprivileged_groups,
+                                           scope_name='plain_classifier',
+                                           debias=False,
+                                           sess=sess)
+    plain_model.fit_without_train(dataset_orig_test)
+
+    input_shape = (None, 18)
+    nb_classes = 1
     x = tf.placeholder(tf.float32, shape=input_shape)
     y = tf.placeholder(tf.float32, shape=(None, nb_classes))
 
     feed_dict = None
 
-    model = dnn5(input_shape, nb_classes)
+    # model = dnn5(input_shape, nb_classes)
+    #
+    # preds = model(x)
 
-    preds = model(x)
     print("Defined TensorFlow model graph.")
 
-    saver = tf.train.Saver()
+    model_path = '../../model/adversarial-debiasing/adebias-model-fix/adult/999/test.model'
 
-    model_path = '../mod/' +datasets+ '/start-all-over-model/adult/999/test.model'
+    saver = tf.train.import_meta_graph(model_path + '.meta')
 
     saver.restore(sess, model_path)
 
-    return sess, preds, x, y, model, feed_dict
+    return sess, plain_model.preds_symbolic_output, x, y, plain_model.classifier_model, feed_dict
 
-def multi_testing_criteria(idx_in_range20, id_list_cnt, datasets, model_name, samples_path, std_range = 0.0, k_n = 1000, k_l = 2):
+
+def multi_testing_criteria(datasets, model_name, samples_path, std_range = 0.0, k_n = 1000, k_l = 2,
+                           store_path="../multi_criteria_result/dnn5/adver-adult/org/"):
+    """
+    :param datasets
+    :param model
+    :param samples_path
+    :param std_range
+    :param k_n
+    :param k_l
+    :return:
+    """
+    # m = np.load('../data/adult/data-x.npy')
+    # n = np.load('../data/adult/data-y.npy')
+
+    # 函数返回值 X_train, Y_train, X_test, Y_test
+    tuple_res = get_single_full_test_sample()
+    samples = tuple_res[2]
+    X_train_boundary = tuple_res[0]
+    store_path = store_path
+
+    if not os.path.exists(store_path):
+        os.makedirs(store_path)
+        tf.reset_default_graph()
+        sess, preds, x, y, model, feed_dict = model_load(datasets=datasets)
+        boundary = neuron_boundary(sess, x, X_train_boundary, model, feed_dict)
+        sess.close()
+        del sess, preds, x, y, model, feed_dict
+        gc.collect()
+        np.save(store_path + "boundary.npy", np.asarray(boundary))
+    else:
+        boundary = np.load(store_path + "boundary.npy", allow_pickle=True).tolist()
+
+    k_coverage, boundary_coverage, neuron_number = init_coverage_metric(boundary, k_n)
+
+    if samples_path == 'test':
+        store_path = store_path + 'test/'
+    else:
+        store_path = store_path + samples_path.split('/')[-3] + '/'
+
+    if not os.path.exists(store_path):
+        cal = True
+        os.makedirs(store_path)
+    else:
+        cal = False
+
+    NP = []
+    n_batches = 1
+
+    for num in range(n_batches):
+        print('num in n_batches is:%d' % num)
+        start = 0
+        end = len(samples) # X_test
+        if not os.path.exists(store_path + 'test/' + 'layers_output.npy'):
+            input_data = samples[start:end]
+            tf.reset_default_graph()
+            sess, preds, x, y, model, feed_dict = model_load(datasets=datasets)
+            layers_output = calculate_layers(sess, x, model, feed_dict, input_data, store_path, 1)
+
+            sess.close()
+            del sess, preds, x, y, model, feed_dict, input_data
+            gc.collect()
+        else:
+            layers_output = np.load(store_path + 'layers_output.npy', allow_pickle=True)
+
+        k_coverage, boundary_coverage = update_multi_coverage_neuron(layers_output, k_n, boundary, k_coverage, boundary_coverage, std_range)
+
+        layer_coverage = calculate_coverage_layer(layers_output, k_l, end - start)
+
+        if num == 0:
+            layer = [set([])] * layer_coverage.shape[0]
+        for i in range(len(layer_coverage)):
+            for j in range(len(layer_coverage[i])):
+                layer[i] = layer[i] | layer_coverage[i][j]
+
+        sample_coverage = np.transpose(layer_coverage, (1, 0))
+        for i in range(len(sample_coverage)):
+            sc = sample_coverage[i].tolist()
+            if sc not in NP:
+                NP.append(sc)
+
+        del layers_output
+        gc.collect()
+
+    KMN = 0
+    NB = 0
+    SNA = 0
+    for i in range(len(k_coverage)):
+        for j in range(len(k_coverage[i])):
+            for t in range(len(k_coverage[i][j])):
+                if k_coverage[i][j][t] > 0:
+                    KMN += 1
+            if boundary_coverage[i][j][1] > 0:
+                NB += 1
+                SNA += 1
+            if boundary_coverage[i][j][0] > 0:
+                NB += 1
+    KMN = 1.0 * KMN / (k_n * neuron_number)
+    NB = 1.0 * NB / (2 * neuron_number)
+    SNA = 1.0 * SNA / neuron_number
+
+    TKNC = sum(len(neurons) for neurons in layer)
+    TKNC = 1.0 * TKNC / neuron_number
+
+    TKNP = len(NP)
+
+    print('KMN, NB, SNA, TKNC, TKNP is :')
+    print([KMN, NB, SNA, TKNC, TKNP])
+    return [KMN, NB, SNA, TKNC, TKNP]
+
+def multi_testing_criteria_for_20_tests(idx_in_range20, id_list_cnt, datasets, model_name, samples_path, std_range = 0.0, k_n = 1000, k_l = 2):
     """
     :param datasets
     :param model
@@ -189,25 +316,19 @@ def multi_testing_criteria(idx_in_range20, id_list_cnt, datasets, model_name, sa
     return [KMN, NB, SNA, TKNC, TKNP]
 
 def main(argv=None):
-
-    id_list_cnt = 0
-    while id_list_cnt < 5:
-        print('id list cnt is %d' % id_list_cnt)
-        multi_nc_to_save = []
-        idx_in_range_20 = 0
-        while idx_in_range_20 < 20:
-            print('id in range 20 is now :%d' % idx_in_range_20)
-            multi_nc_to_save.append(multi_testing_criteria(idx_in_range_20, id_list_cnt,
+    multi_nc_to_save = []
+    store_path = "../multi_criteria_result/dnn5/adver-adult/adebias/"
+    multi_nc_to_save.append(multi_testing_criteria(
                            datasets = FLAGS.datasets,
                            model_name=FLAGS.model,
                            samples_path=FLAGS.samples,
                            std_range = FLAGS.std_range,
                            k_n = FLAGS.k_n,
-                           k_l = FLAGS.k_l))
-            idx_in_range_20 += 1
-        multi_nc_to_save = np.array(multi_nc_to_save, dtype=np.float64)
-        np.save('../multi_testing_criteria/dnn5/adult/' + 'rw-20-tests-0' + str(id_list_cnt + 1) + '.npy', multi_nc_to_save)
-        id_list_cnt += 1
+                           k_l = FLAGS.k_l,
+                           store_path=store_path))
+    multi_nc_to_save = np.array(multi_nc_to_save, dtype=np.float64)
+    np.save(store_path + "multi-nc.npy", multi_nc_to_save)
+
 
 
 if __name__ == '__main__':

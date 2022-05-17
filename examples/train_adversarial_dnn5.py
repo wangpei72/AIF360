@@ -92,8 +92,7 @@ if __name__ == '__main__':
                                            scope_name='plain_classifier',
                                            debias=False,
                                            sess=sess)
-    dataset_nodebiasing_train, dataset_nodebiasing_test = plain_model.fit_and_pred(dataset_orig_train,
-                                                                                   dataset_orig_test)
+    plain_model.fit(dataset_orig_train)
     # dataset_nodebiasing_train = plain_model.predict_with_load_gra(dataset_orig_train)
     # dataset_nodebiasing_test = plain_model.predict_with_load_gra(dataset_orig_test)
 
@@ -106,8 +105,7 @@ if __name__ == '__main__':
                                               scope_name='debiased_classifier',
                                               debias=True,
                                               sess=sess)
-    dataset_debiasing_train_, dataset_debiasing_test_ = debiased_model.fit_and_pred(dataset_orig_train,
-                                                                                    dataset_orig_test)
+    debiased_model.fit(dataset_orig_train)
     # dataset_debiasing_train = debiased_model.predict_with_load_gra(dataset_orig_train)
     # dataset_debiasing_test = debiased_model.predict_with_load_gra(dataset_orig_test)
 
