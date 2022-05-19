@@ -1,4 +1,4 @@
-from aif360.datasets import AdultDataset, GermanDataset, CompasDataset, BankDataset, DefaultCreditDataset
+from aif360.datasets import AdultDataset, GermanDataset, CompasDataset, BankDataset, DefaultCreditDataset, HeartDataset
 import pandas as pd
 import numpy as np
 
@@ -475,6 +475,7 @@ def load_preproc_data_default(protected_attributes=None):
                 return 'others'
 
         # group limit_bal Age
+        # TODO之前曲解了在类中的>25的意思，确实是从》=26开始的年龄，所以之前改的bug（还导致accu下降了）可能要改回去
         df['AGE'] = df['AGE'].apply(lambda x: np.float(x >= 25))
         df['LIMIT_BAL'] = df['LIMIT_BAL'].apply(lambda x: group_limit_bal(x))
         # rename and replace cols
@@ -511,3 +512,44 @@ def load_preproc_data_default(protected_attributes=None):
                   'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
         custom_preprocessing=custom_preprocessing)
     return dataset_default
+
+
+
+def load_preproc_data_heart(protected_attributes=None):
+    def custom_preprocessing(df):
+        # 根据平均数划分界限
+        df['age'] = df['age'].apply(lambda x: np.float(x < 54.4))
+
+        # binary label col
+        df['Probability'] = df['Probability'].apply(lambda x: np.float(x == 0))
+        # df['Probability'] = pd.DataFrame.where(df, df['Probability'] == 0, other=1)
+        return df
+
+    XD_features = ['age', 'sex', 'cp', 'trestbps', 'chol',
+                   'fbs', 'restecg', 'thalach', 'exang',
+                   'oldpeak','slope','ca','thal'
+                   ]
+    D_features = ['age'] if protected_attributes is None else protected_attributes
+    Y_features = ['Probability']
+    X_features = list(set(XD_features) - set(D_features))
+    categorical_features = []
+
+    # pri classes 年轻的人患病可能性较小 属于优势群体 因此上面的lambda表达式给的也是小于号
+    # 同时 prob为0 表示没有患病可能的属于优势
+    all_privileged_classes = {'age': [1.0]}
+
+    # protected attr maps
+    all_protected_attribute_maps = {'age': {1.0: 'Young', 0.0: 'Old'}}
+
+    dataset_heart = HeartDataset(
+        label_name=Y_features[0],
+        favorable_classes=[1],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        instance_weights_name=None,
+        categorical_features=categorical_features,
+        features_to_keep=X_features+Y_features+D_features,
+        metadata={'label_maps': [{1.0: 'absence', 0.0: 'presence'}],
+                  'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
+        custom_preprocessing=custom_preprocessing)
+    return dataset_heart
