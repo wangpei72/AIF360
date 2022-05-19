@@ -4,6 +4,11 @@ import pandas as pd
 
 from aif360.datasets import StandardDataset
 
+default_mappings = {
+    'label_maps': [{1.0: '\"yes\"', 0.0: '\"no\"'}],
+    'protected_attribute_maps': [{1.0: [lambda x: x >= 25], 0.0: [lambda x: x < 25]}]
+}
+
 
 class BankDataset(StandardDataset):
     """Bank marketing Dataset.
@@ -20,7 +25,7 @@ class BankDataset(StandardDataset):
                      'poutcome'],
                  features_to_keep=[], features_to_drop=[],
                  na_values=["unknown"], custom_preprocessing=None,
-                 metadata=None):
+                 metadata=default_mappings):
         """See :obj:`StandardDataset` for a description of the arguments.
 
         By default, this code converts the 'age' attribute to a binary value
