@@ -91,7 +91,8 @@ class StandardDataset(BinaryLabelDataset):
         if instance_weights_name:
             keep |= set([instance_weights_name])
         df = df[sorted(keep - set(features_to_drop), key=df.columns.get_loc)]
-        categorical_features = sorted(set(categorical_features) - set(features_to_drop), key=df.columns.get_loc)
+        categorical_features = sorted(set(categorical_features) - set(features_to_drop),
+                                      key=df.columns.get_loc)
 
         # 4. Remove any rows that have missing data.
         dropped = df.dropna()

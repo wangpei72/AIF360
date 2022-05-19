@@ -5,7 +5,7 @@ import pandas as pd
 from aif360.datasets import StandardDataset
 
 default_mappings = {
-    'label_maps': [{1.0: '\"yes\"', 0.0: '\"no\"'}],
+    'label_maps': [{1.0: "yes", 0.0: "no"}],  # 这里需不需要转义字符需要测试一下
     'protected_attribute_maps': [{1.0: [lambda x: x >= 25], 0.0: [lambda x: x < 25]}]
 }
 

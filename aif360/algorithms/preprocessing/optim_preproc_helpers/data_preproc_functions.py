@@ -312,6 +312,149 @@ def load_preproc_data_german(protected_attributes=None):
         custom_preprocessing=custom_preprocessing)
 
 def load_preproc_data_bank(protected_atrributes=None):
-    return BankDataset()
+    def custom_preprocessing(df):
+        # group age by decade
+        df['Age (decade)'] = df['age'].apply(lambda x: x//10*10)
 
-def load_preproc_data_
+        def group_job(x):
+            if x in ['admin.', 'blue-collar', 'entrepreneur',
+                     'housemaid', 'management', 'self-employed',
+                     'services', 'technician']:
+                return 'employed'
+            elif x in ['student', 'unemployed']:
+                return 'unemployed'
+            elif x in ['retired']:
+                return 'retired'
+            else:
+                return 'unknown'
+
+        def group_marital(x):
+            if x in ['married']:
+                return 'married'
+            else:
+                return 'others'
+
+        def group_edu(x):
+            if x in ['illiterate', 'basic.4y', 'basic.6y']:
+                return '<9'
+            elif x in ['basic.9y', 'high.school']:
+                return '9-12'
+            elif x in ['university.degree', 'professional.course']:
+                return '>12'
+            else:
+                return 'unknown'
+
+        def group_campaign(x):
+            if x <= 1:
+                return '<=1'
+            else:
+                return '>1'
+
+        def group_pdays(x):
+            if x == 999:
+                return 'non-contacted'
+            else:
+                return 'contacted>once'
+
+        def group_previous(x):
+            if x == 0:
+                return 'never'
+            else:
+                return 'ever'
+
+        def group_poutcome(x):
+            if x in ['failure', 'nonexistent']:
+                return 0.0
+            elif x in ['success']:
+                return 1.0
+
+        def age_cut(x):
+            if x >= 70:
+                return '>=70'
+            else:
+                return x
+
+        # 补充5-7的group
+        def group_default(x):
+            if x in ['yes']:
+                return 'yes'
+            elif x in ['no']:
+                return 'no'
+            else:
+                return 'unknown'
+
+        def group_housing(x):
+            if x in ['yes']:
+                return 'yes'
+            elif x in ['no']:
+                return 'no'
+            else:
+                return 'unknown'
+
+        def group_loan(x):
+            if x in ['yes']:
+                return 'yes'
+            elif x in ['no']:
+                return 'no'
+            else:
+                return 'unknown'
+
+        df['Education Years'] = df['education'].apply(lambda x: group_edu(x))
+        df['Education Years'] = df['Education Years'].astype('category')
+
+        df['Age (decade)'] = df['Age (decade)'].apply(lambda x: age_cut(x))
+
+        # df['Subscribe Prob'] = df['y']
+        # df['Subscribe Prob'] = df['Subscribe Prob'].replace()
+
+        # group job marital campaign pdays previous poutcome
+        df['age'] = df['age'].apply(lambda x: np.float(x >= 25))
+        # 注意加上了这行并且在下面使用 相当于之前的Age decade被弃用
+
+        df['default'] = df['default'].apply(lambda x: group_default(x))
+        df['housing'] = df['housing'].apply(lambda x: group_housing(x))
+        df['loan'] = df['loan'].apply(lambda x: group_loan(x))
+        df['job'] = df['job'].apply(lambda x: group_job(x))
+        df['marital'] = df['marital'].apply(lambda x: group_marital(x))
+        df['campaign'] = df['campaign'].apply(lambda x: group_campaign(x))
+        df['pdays'] = df['pdays'].apply(lambda x: group_pdays(x))
+        df['previous'] = df['previous'].apply(lambda x: group_previous(x))
+        df['poutcome'] = df['poutcome'].apply(lambda x: group_poutcome(x))
+
+        # TODO default开始 5-11的属性的categorical属性没有做group，12-15是数字的反而做了，可能是不需要的？
+
+        return df
+
+    # 特征分离 partitions
+    XD_features = ['age', 'job', 'marital', 'Education Years',
+                   'default', 'housing', 'loan',
+                   'campaign', 'pdays', 'previous',
+                   'poutcome']
+    D_features = ['age']
+    Y_features = ['y']
+    X_features = list(set(XD_features) - set(D_features))
+    categorical_features = ['job', 'marital', 'Education Years',
+                            'default', 'housing', 'loan', 'campaign', 'pdays', 'previous',
+                            'poutcome']
+
+    # privileged classes 优势类别
+    all_privileged_classes = {"age": [1.0]}
+
+    # 敏感属性映射
+    all_protected_attribute_maps = {'age': {1.0: 'Old', 0.0: 'Young'}}
+
+
+    dataset_bank = BankDataset(
+        label_name=Y_features[0],
+        favorable_classes=['yes'],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        instance_weights_name=None,
+        categorical_features=categorical_features,
+        features_to_keep=X_features+Y_features+D_features,
+        metadata={ 'label_maps': [{1.0: 'yes', 0.0: 'no'}],
+                   'protected_attribute_maps': [all_protected_attribute_maps[x]
+                                                for x in D_features]},
+        custom_preprocessing=custom_preprocessing)
+
+    return dataset_bank
