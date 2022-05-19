@@ -1,4 +1,4 @@
-from aif360.datasets import AdultDataset, GermanDataset, CompasDataset, BankDataset
+from aif360.datasets import AdultDataset, GermanDataset, CompasDataset, BankDataset, DefaultCreditDataset
 import pandas as pd
 import numpy as np
 
@@ -311,7 +311,7 @@ def load_preproc_data_german(protected_attributes=None):
                                 for x in D_features]},
         custom_preprocessing=custom_preprocessing)
 
-def load_preproc_data_bank(protected_atrributes=None):
+def load_preproc_data_bank(protected_attributes=None):
     def custom_preprocessing(df):
         # group age by decade
         df['Age (decade)'] = df['age'].apply(lambda x: x//10*10)
@@ -458,3 +458,56 @@ def load_preproc_data_bank(protected_atrributes=None):
         custom_preprocessing=custom_preprocessing)
 
     return dataset_bank
+
+def load_preproc_data_default(protected_attributes=None):
+    def custom_preprocessing(df):
+
+        def group_limit_bal(x):
+            if x <= 60000:
+                return '<=60k'
+            elif x > 60000 and x <= 200000:
+                return '60k to 200k'
+            elif x > 200000 and x <= 400000:
+                return '200k to 400k'
+            elif x > 400000:
+                return '>400k'
+            else:
+                return 'others'
+
+        # group limit_bal Age
+        df['AGE'] = df['AGE'].apply(lambda x: np.float(x >= 25))
+        df['LIMIT_BAL'] = df['LIMIT_BAL'].apply(lambda x: group_limit_bal(x))
+        # rename and replace cols
+        # df.rename(columns={'default.payment.next.month': 'def_pay'}, inplace=True)
+        df['SEX'] = df['SEX'].replace({2: 0.0, 1: 1.0})  # 1 = male while 2= female
+
+        return df
+
+    XD_features = ['LIMIT_BAL', 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE',
+                   'PAY_0', 'PAY_2', 'PAY_3', 'PAY_4', 'PAY_5', 'PAY_6',
+                   'BILL_AMT1', 'BILL_AMT2', 'BILL_AMT3', 'BILL_AMT4', 'BILL_AMT5','BILL_AMT6',
+                   'PAY_AMT1', 'PAY_AMT2', 'PAY_AMT3', 'PAY_AMT4', 'PAY_AMT5', 'PAY_AMT6'
+                   ]
+    D_features = ['AGE'] if protected_attributes is None else protected_attributes
+    Y_features = ['default payment next month']
+    X_features = list(set(XD_features) - set(D_features))
+    categorical_features = ['LIMIT_BAL']
+
+    # pri classes
+    all_privileged_classes = {'AGE': [1.0]}
+
+    # protected attr maps
+    all_protected_attribute_maps = {'AGE': {1.0: 'Old', 0.0: 'Young'}}
+
+    dataset_default = DefaultCreditDataset(
+        label_name=Y_features[0],
+        favorable_classes=[1],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        instance_weights_name=None,
+        categorical_features=categorical_features,
+        features_to_keep=X_features+Y_features+D_features,
+        metadata={'label_maps': [{1.0: 'default payment', 0.0: 'non-default payment'}],
+                  'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
+        custom_preprocessing=custom_preprocessing)
+    return dataset_default
