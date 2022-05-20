@@ -1,6 +1,6 @@
 from aif360.datasets import AdultDataset, GermanDataset, \
     CompasDataset, BankDataset, DefaultCreditDataset, \
-    HeartDataset, StudentDataset
+    HeartDataset, StudentDataset, MEPSDataset19, MEPSDataset20, MEPSDataset21
 import pandas as pd
 import numpy as np
 
@@ -632,3 +632,16 @@ def load_preproc_data_student(protected_attributes=None):
                   'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
         custom_preprocessing=custom_preprocessing)
     return dataset_student
+
+def load_preproc_data_meps19(protected_attributes=None):
+    dataset_meps19 = MEPSDataset19()
+    return dataset_meps19
+
+def load_preproc_data_meps20(protected_attributes=None):
+    dataset_meps20 = MEPSDataset20()
+    return dataset_meps20
+
+def load_preproc_data_meps21(protected_attributes=None):
+    dataset_meps21 = MEPSDataset21()
+    return dataset_meps21
+
