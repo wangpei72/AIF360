@@ -9,7 +9,8 @@ from aif360.metrics.utils import compute_boolean_conditioning_vector
 
 from aif360.algorithms.preprocessing.optim_preproc_helpers.data_preproc_functions import load_preproc_data_adult, \
     load_preproc_data_compas, load_preproc_data_german, \
-    convert_two_dims_labels, load_preproc_data_bank, load_preproc_data_default, load_preproc_data_heart
+    convert_two_dims_labels, load_preproc_data_bank, load_preproc_data_default, load_preproc_data_heart, \
+    load_preproc_data_student
 
 from aif360.algorithms.inprocessing.adversarial_debiasing_dnn5 import AdversarialDebiasingDnn5
 import numpy as np
@@ -86,18 +87,34 @@ if __name__ == '__main__':
 #     np.save('../aif360/data/npy_data/default-aif360preproc/2d-labels-test.npy', test_converted_labels)
 
 
-#    heart pro-attr: age (<54.4/ >= 54.4)
-    dataset_orig_heart = load_preproc_data_heart()
-    heart_orig_train, heart_orig_test = dataset_orig_heart.split([0.8], shuffle=False)
-    train_converted_labels = convert_two_dims_labels(heart_orig_train)
-    test_converted_labels = convert_two_dims_labels(heart_orig_test)
-    save_dir = '../aif360/data/npy_data/heart-aif360preproc/'
+# #    heart pro-attr: age (<54.4/ >= 54.4)
+#     dataset_orig_heart = load_preproc_data_heart()
+#     heart_orig_train, heart_orig_test = dataset_orig_heart.split([0.8], shuffle=False)
+#     train_converted_labels = convert_two_dims_labels(heart_orig_train)
+#     test_converted_labels = convert_two_dims_labels(heart_orig_test)
+#     save_dir = '../aif360/data/npy_data/heart-aif360preproc/'
+#     if not os._exists(save_dir):
+#         os.makedirs(save_dir)
+#     np.save('../aif360/data/npy_data/heart-aif360preproc/labels-train.npy', heart_orig_train.labels)
+#     np.save('../aif360/data/npy_data/heart-aif360preproc/labels-test.npy', heart_orig_test.labels)
+#     np.save('../aif360/data/npy_data/heart-aif360preproc/features-train.npy', heart_orig_train.features)
+#     np.save('../aif360/data/npy_data/heart-aif360preproc/features-test.npy', heart_orig_test.features)
+#     np.save('../aif360/data/npy_data/heart-aif360preproc/2d-labels-train.npy', train_converted_labels)
+#     np.save('../aif360/data/npy_data/heart-aif360preproc/2d-labels-test.npy', test_converted_labels)
+
+#    student pro-attr: sex (male is privileged)
+    dataset_orig_student = load_preproc_data_student()
+    student_orig_train, student_orig_test = dataset_orig_student.split([0.8], shuffle=False)
+    train_converted_labels = convert_two_dims_labels(student_orig_train)
+    test_converted_labels = convert_two_dims_labels(student_orig_test)
+    save_dir = '../aif360/data/npy_data/student-aif360preproc/'
     if not os._exists(save_dir):
         os.makedirs(save_dir)
-    np.save('../aif360/data/npy_data/heart-aif360preproc/labels-train.npy', heart_orig_train.labels)
-    np.save('../aif360/data/npy_data/heart-aif360preproc/labels-test.npy', heart_orig_test.labels)
-    np.save('../aif360/data/npy_data/heart-aif360preproc/features-train.npy', heart_orig_train.features)
-    np.save('../aif360/data/npy_data/heart-aif360preproc/features-test.npy', heart_orig_test.features)
-    np.save('../aif360/data/npy_data/heart-aif360preproc/2d-labels-train.npy', train_converted_labels)
-    np.save('../aif360/data/npy_data/heart-aif360preproc/2d-labels-test.npy', test_converted_labels)
+    np.save('../aif360/data/npy_data/student-aif360preproc/labels-train.npy', student_orig_train.labels)
+    np.save('../aif360/data/npy_data/student-aif360preproc/labels-test.npy', student_orig_test.labels)
+    np.save('../aif360/data/npy_data/student-aif360preproc/features-train.npy', student_orig_train.features)
+    np.save('../aif360/data/npy_data/student-aif360preproc/features-test.npy', student_orig_test.features)
+    np.save('../aif360/data/npy_data/student-aif360preproc/2d-labels-train.npy', train_converted_labels)
+    np.save('../aif360/data/npy_data/student-aif360preproc/2d-labels-test.npy', test_converted_labels)
     print('done')
+

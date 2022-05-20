@@ -1,4 +1,6 @@
-from aif360.datasets import AdultDataset, GermanDataset, CompasDataset, BankDataset, DefaultCreditDataset, HeartDataset
+from aif360.datasets import AdultDataset, GermanDataset, \
+    CompasDataset, BankDataset, DefaultCreditDataset, \
+    HeartDataset, StudentDataset
 import pandas as pd
 import numpy as np
 
@@ -553,3 +555,80 @@ def load_preproc_data_heart(protected_attributes=None):
                   'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
         custom_preprocessing=custom_preprocessing)
     return dataset_heart
+
+def load_preproc_data_student(protected_attributes=None):
+    def custom_preprocessing(df):
+        # 将所有的binary换成0和1，将所有的numeric维持不变， nominal将进行编码
+        df['school'] = df['school'].apply(lambda x: np.float(x == 'GP'))
+
+        df['sex'] = df['sex'].apply(lambda x: np.float(x == 'M'))
+        df['address'] = df['address'].apply(lambda x: np.float(x == 'U'))
+        df['famsize'] = df['famsize'].apply(lambda x: np.float(x == 'LE3'))
+        df['Pstatus'] = df['Pstatus'].apply(lambda x: np.float(x == 'T'))
+
+        df.loc[df['Mjob'] == 'teacher', 'Mjob'] = 1
+        df.loc[df['Mjob'] == 'health', 'Mjob'] = 2
+        df.loc[df['Mjob'] == 'services', 'Mjob'] = 3
+        df.loc[df['Mjob'] == 'at_home', 'Mjob'] = 0
+        df.loc[df['Mjob'] == 'other', 'Mjob'] = 0
+
+        df.loc[df['Fjob'] == 'teacher', 'Fjob'] = 1
+        df.loc[df['Fjob'] == 'health', 'Fjob'] = 2
+        df.loc[df['Fjob'] == 'services', 'Fjob'] = 3
+        df.loc[df['Fjob'] == 'at_home', 'Fjob'] = 0
+        df.loc[df['Fjob'] == 'other', 'Fjob'] = 0
+
+        df.loc[df['reason'] == 'home', 'reason'] = 1
+        df.loc[df['reason'] == 'reputation', 'reason'] = 2
+        df.loc[df['reason'] == 'course', 'reason'] = 3
+        df.loc[df['reason'] == 'other', 'reason'] = 0
+
+        df.loc[df['guardian'] == 'mother', 'guardian'] = 1
+        df.loc[df['guardian'] == 'father', 'guardian'] = 2
+        df.loc[df['guardian'] == 'other', 'guardian'] = 0
+
+        df['schoolsup'] = df['schoolsup'].apply(lambda x: np.float(x == 'yes'))
+        df['famsup'] = df['famsup'].apply(lambda x: np.float(x == 'yes'))
+        df['paid'] = df['paid'].apply(lambda x: np.float(x == 'yes'))
+        df['activities'] = df['activities'].apply(lambda x: np.float(x == 'yes'))
+        df['nursery'] = df['nursery'].apply(lambda x: np.float(x == 'yes'))
+        df['higher'] = df['higher'].apply(lambda x: np.float(x == 'yes'))
+        df['internet'] = df['internet'].apply(lambda x: np.float(x == 'yes'))
+        df['romantic'] = df['romantic'].apply(lambda x: np.float(x == 'yes'))
+
+        # binary label col
+        df['Probability'] = df['Probability'].apply(lambda x: np.float(x >= 11.4))
+        # df['Probability'] = pd.DataFrame.where(df, df['Probability'] == 0, other=1)
+        return df
+
+    XD_features = ['school','sex','age','address','famsize','Pstatus',
+                   'Medu','Fedu','Mjob','Fjob','reason',
+                   'guardian','traveltime','studytime','failures','schoolsup',
+                   'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet',
+                   'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc',
+                   'health', 'absences', 'G1', 'G2'
+                   ]
+    D_features = ['sex'] if protected_attributes is None else protected_attributes
+    Y_features = ['Probability']
+    X_features = list(set(XD_features) - set(D_features))
+    categorical_features = []
+
+    # pri classes 1表示分数大于平均数
+    # 优势群体为男性 M
+    all_privileged_classes = {'sex': [1.0]}
+
+    # protected attr maps
+    all_protected_attribute_maps = {'sex': {1.0: 'Male', 0.0: 'Female'}}
+
+    dataset_student = StudentDataset(
+        label_name=Y_features[0],
+        favorable_classes=[1],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        instance_weights_name=None,
+        categorical_features=categorical_features,
+        features_to_keep=X_features+Y_features+D_features,
+        metadata={'label_maps': [{1.0: 'higher than mean', 0.0: 'lower than mean'}],
+                  'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
+        custom_preprocessing=custom_preprocessing)
+    return dataset_student
