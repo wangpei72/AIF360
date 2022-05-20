@@ -13,5 +13,8 @@ from aif360.datasets.student_dataset import StudentDataset
 from aif360.datasets.meps_dataset_panel19_fy2015 import MEPSDataset19
 from aif360.datasets.meps_dataset_panel20_fy2015 import MEPSDataset20
 from aif360.datasets.meps_dataset_panel21_fy2016 import MEPSDataset21
+
+# TODO 编写合并过后的MEPS DATASET类
+from aif360.datasets.home_credit_dataset import HomeCreditDataset
 from aif360.datasets.regression_dataset import RegressionDataset
 from aif360.datasets.law_school_gpa_dataset import LawSchoolGPADataset 

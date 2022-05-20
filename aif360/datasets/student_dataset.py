@@ -16,9 +16,9 @@ class StudentDataset(StandardDataset):
     """
 
     def __init__(self, label_name='Probability',
-                 favorable_classes=['M'],
-                 protected_attribute_names=['age'],
-                 privileged_classes=[lambda x: x >= 11.4],
+                 favorable_classes=[1],
+                 protected_attribute_names=['sex'],
+                 privileged_classes=['M'],
                  instance_weights_name=None,
                  categorical_features=[],
                  features_to_keep=[], features_to_drop=[],
@@ -26,8 +26,8 @@ class StudentDataset(StandardDataset):
                  metadata=default_mappings):
         """See :obj:`StandardDataset` for a description of the arguments.
 
-        By default, this code converts the 'age' attribute to a binary value
-        where privileged is `age <54.4` and unprivileged is `age >= 54.4` as in
+        By default, this code converts the 'sex' attribute to a binary value
+        where privileged is `M` and unprivileged is `F` as in
         :obj:`StudentDataset`.
         """
 

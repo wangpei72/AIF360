@@ -10,7 +10,8 @@ from aif360.metrics.utils import compute_boolean_conditioning_vector
 from aif360.algorithms.preprocessing.optim_preproc_helpers.data_preproc_functions import load_preproc_data_adult, \
     load_preproc_data_compas, load_preproc_data_german, \
     convert_two_dims_labels, load_preproc_data_bank, load_preproc_data_default, load_preproc_data_heart, \
-    load_preproc_data_student, load_preproc_data_meps21, load_preproc_data_meps19, load_preproc_data_meps20
+    load_preproc_data_student, load_preproc_data_meps21, load_preproc_data_meps19, load_preproc_data_meps20, \
+    load_preproc_data_home_credit
 
 from aif360.algorithms.inprocessing.adversarial_debiasing_dnn5 import AdversarialDebiasingDnn5
 import numpy as np
@@ -165,41 +166,56 @@ if __name__ == '__main__':
 
 
     # concat 19 20 21 to one full dataset
-    dataset_orig_meps19 = load_preproc_data_meps19()
-    meps19_orig_train, meps19_orig_test = dataset_orig_meps19.split([0.8], shuffle=False)
-    train_converted_labels19 = convert_two_dims_labels(meps19_orig_train)
-    test_converted_labels19 = convert_two_dims_labels(meps19_orig_test)
-    dataset_orig_meps20 = load_preproc_data_meps20()
-    meps20_orig_train, meps20_orig_test = dataset_orig_meps20.split([0.8], shuffle=False)
-    train_converted_labels20 = convert_two_dims_labels(meps20_orig_train)
-    test_converted_labels20 = convert_two_dims_labels(meps20_orig_test)
+    # dataset_orig_meps19 = load_preproc_data_meps19()
+    # meps19_orig_train, meps19_orig_test = dataset_orig_meps19.split([0.8], shuffle=False)
+    # train_converted_labels19 = convert_two_dims_labels(meps19_orig_train)
+    # test_converted_labels19 = convert_two_dims_labels(meps19_orig_test)
+    # dataset_orig_meps20 = load_preproc_data_meps20()
+    # meps20_orig_train, meps20_orig_test = dataset_orig_meps20.split([0.8], shuffle=False)
+    # train_converted_labels20 = convert_two_dims_labels(meps20_orig_train)
+    # test_converted_labels20 = convert_two_dims_labels(meps20_orig_test)
+    #
+    # dataset_orig_meps21 = load_preproc_data_meps21()
+    # meps21_orig_train, meps21_orig_test = dataset_orig_meps21.split([0.8], shuffle=False)
+    # train_converted_labels21 = convert_two_dims_labels(meps21_orig_train)
+    # test_converted_labels21 = convert_two_dims_labels(meps21_orig_test)
+    #
+    # concat_train_feat = np.concatenate((meps19_orig_train.features, meps20_orig_train.features, meps21_orig_train.features),
+    #                                   axis=0)
+    # concat_test_feat = np.concatenate((meps19_orig_test.features, meps20_orig_test.features, meps21_orig_test.features),
+    #                                     axis=0)
+    # concat_train_labels = np.concatenate((meps19_orig_train.labels, meps20_orig_train.labels, meps21_orig_train.labels),
+    #                                   axis=0)
+    # concat_test_labels = np.concatenate((meps19_orig_test.labels, meps20_orig_test.labels, meps21_orig_test.labels),
+    #                                   axis=0)
+    # concat_2d_train_labels = np.concatenate((train_converted_labels19, train_converted_labels20, train_converted_labels21),
+    #                                   axis=0)
+    # concat_2d_test_labels = np.concatenate((test_converted_labels19, test_converted_labels20, test_converted_labels21),
+    #                                   axis=0)
+    #
+    # save_dir = '../aif360/data/npy_data/meps-aif360preproc/'
+    # if not os._exists(save_dir):
+    #     os.makedirs(save_dir)
+    # np.save('../aif360/data/npy_data/meps-aif360preproc/labels-train.npy', concat_train_labels)
+    # np.save('../aif360/data/npy_data/meps-aif360preproc/labels-test.npy', concat_test_labels)
+    # np.save('../aif360/data/npy_data/meps-aif360preproc/features-train.npy', concat_train_feat)
+    # np.save('../aif360/data/npy_data/meps-aif360preproc/features-test.npy', concat_test_feat)
+    # np.save('../aif360/data/npy_data/meps-aif360preproc/2d-labels-train.npy', concat_2d_train_labels)
+    # np.save('../aif360/data/npy_data/meps-aif360preproc/2d-labels-test.npy', concat_2d_test_labels)
 
-    dataset_orig_meps21 = load_preproc_data_meps21()
-    meps21_orig_train, meps21_orig_test = dataset_orig_meps21.split([0.8], shuffle=False)
-    train_converted_labels21 = convert_two_dims_labels(meps21_orig_train)
-    test_converted_labels21 = convert_two_dims_labels(meps21_orig_test)
 
-    concat_train_feat = np.concatenate((meps19_orig_train.features, meps20_orig_train.features, meps21_orig_train.features),
-                                      axis=0)
-    concat_test_feat = np.concatenate((meps19_orig_test.features, meps20_orig_test.features, meps21_orig_test.features),
-                                        axis=0)
-    concat_train_labels = np.concatenate((meps19_orig_train.labels, meps20_orig_train.labels, meps21_orig_train.labels),
-                                      axis=0)
-    concat_test_labels = np.concatenate((meps19_orig_test.labels, meps20_orig_test.labels, meps21_orig_test.labels),
-                                      axis=0)
-    concat_2d_train_labels = np.concatenate((train_converted_labels19, train_converted_labels20, train_converted_labels21),
-                                      axis=0)
-    concat_2d_test_labels = np.concatenate((test_converted_labels19, test_converted_labels20, test_converted_labels21),
-                                      axis=0)
-
-    save_dir = '../aif360/data/npy_data/meps-aif360preproc/'
+    dataset_orig_home_credit = load_preproc_data_home_credit()
+    home_credit_orig_train, home_credit_orig_test = dataset_orig_home_credit.split([0.8], shuffle=False)
+    train_converted_labels = convert_two_dims_labels(home_credit_orig_train)
+    test_converted_labels = convert_two_dims_labels(home_credit_orig_test)
+    save_dir = '../aif360/data/npy_data/home_credit-aif360preproc/'
     if not os._exists(save_dir):
         os.makedirs(save_dir)
-    np.save('../aif360/data/npy_data/meps-aif360preproc/labels-train.npy', concat_train_labels)
-    np.save('../aif360/data/npy_data/meps-aif360preproc/labels-test.npy', concat_test_labels)
-    np.save('../aif360/data/npy_data/meps-aif360preproc/features-train.npy', concat_train_feat)
-    np.save('../aif360/data/npy_data/meps-aif360preproc/features-test.npy', concat_test_feat)
-    np.save('../aif360/data/npy_data/meps-aif360preproc/2d-labels-train.npy', concat_2d_train_labels)
-    np.save('../aif360/data/npy_data/meps-aif360preproc/2d-labels-test.npy', concat_2d_test_labels)
+    np.save('../aif360/data/npy_data/home_credit-aif360preproc/labels-train.npy', home_credit_orig_train.labels)
+    np.save('../aif360/data/npy_data/home_credit-aif360preproc/labels-test.npy', home_credit_orig_test.labels)
+    np.save('../aif360/data/npy_data/home_credit-aif360preproc/features-train.npy', home_credit_orig_train.features)
+    np.save('../aif360/data/npy_data/home_credit-aif360preproc/features-test.npy', home_credit_orig_test.features)
+    np.save('../aif360/data/npy_data/home_credit-aif360preproc/2d-labels-train.npy', train_converted_labels)
+    np.save('../aif360/data/npy_data/home_credit-aif360preproc/2d-labels-test.npy', test_converted_labels)
     print('done')
 
