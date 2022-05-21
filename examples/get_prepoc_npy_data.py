@@ -17,20 +17,27 @@ from aif360.algorithms.inprocessing.adversarial_debiasing_dnn5 import Adversaria
 import numpy as np
 
 if __name__ == '__main__':
-# adult protected attr： sex race
-#     dataset_orig_adult = load_preproc_data_adult(convert=True)
 
-    privileged_groups = [{'sex': 1}]  # 在具体计算指标的时候调用，可以替换成race age等
-    unprivileged_groups = [{'sex': 0}]
+
+    # privileged_groups = [{'sex': 1}]  # 在具体计算指标的时候调用，可以替换成race age等
+    # unprivileged_groups = [{'sex': 0}]
     # privileged_groups = [{'race': 1}]
     # unprivileged_groups = [{'race': 0}]
     # privileged_groups = [{'age': 1}]
     # unprivileged_groups = [{'age': 0}]
-#     dataset_orig_train, dataset_orig_test = dataset_orig_adult.split([0.8], shuffle=True)
+    # adult protected attr： sex race
+    # dataset_orig_adult = load_preproc_data_adult(convert=True)
+    # adult_orig_train,  adult_orig_test = dataset_orig_adult.split([0.8], shuffle=False)
 #     # 转换成二维的labels用以适应DNN的训练和测试，但是在其他AIF360应用的地方，是一维的
-#     train_converted_labels = convert_two_dims_labels(dataset_orig_train)
-#     test_converted_labels = convert_two_dims_labels(dataset_orig_test)
-#
+#     train_converted_labels = convert_two_dims_labels(adult_orig_train)
+#     test_converted_labels = convert_two_dims_labels( adult_orig_test)
+#     save_dir = '../aif360/data/npy_data/adult-aif360preproc/'
+#     if not os._exists(save_dir):
+#         os.makedirs(save_dir)
+#     np.save('../aif360/data/npy_data/adult-aif360preproc/labels-train.npy', adult_orig_train.labels)
+#     np.save('../aif360/data/npy_data/adult-aif360preproc/labels-test.npy', adult_orig_test.labels)
+#     np.save('../aif360/data/npy_data/adult-aif360preproc/features-train.npy', adult_orig_train.features)
+#     np.save('../aif360/data/npy_data/adult-aif360preproc/features-test.npy', adult_orig_test.features)
 #     np.save('../aif360/data/npy_data/adult-aif360preproc/2d-labels-train.npy', train_converted_labels)
 #     np.save('../aif360/data/npy_data/adult-aif360preproc/2d-labels-test.npy', test_converted_labels)
 #
@@ -41,19 +48,24 @@ if __name__ == '__main__':
 #     train_converted_labels = convert_two_dims_labels(dataset_orig_train)
 #     test_converted_labels = convert_two_dims_labels(dataset_orig_test)
 #
-#     np.save('../aif360/data/npy_data/compas-aif360preproc/2d-labels-train.npy', train_converted_labels)
+    # np.save('../aif360/data/npy_data/compas-aif360preproc/2d-labels-train.npy', train_converted_labels)
 #     np.save('../aif360/data/npy_data/compas-aif360preproc/2d-labels-test.npy', test_converted_labels)
 #
 # # German credit protected attr : sex
-#     dataset_orig_german = load_preproc_data_german()
-#
-#     dataset_orig_train, dataset_orig_test = dataset_orig_german.split([0.8], shuffle=True)
-#     train_converted_labels = convert_two_dims_labels(dataset_orig_train)
-#     test_converted_labels = convert_two_dims_labels(dataset_orig_test)
-#
-#     np.save('../aif360/data/npy_data/german-aif360preproc/2d-labels-train.npy', train_converted_labels)
-#     np.save('../aif360/data/npy_data/german-aif360preproc/2d-labels-test.npy', test_converted_labels)
-#
+    dataset_orig_german = load_preproc_data_german()
+    german_orig_train, german_orig_test = dataset_orig_german.split([0.8], shuffle=False)
+    train_converted_labels = convert_two_dims_labels(german_orig_train)
+    test_converted_labels = convert_two_dims_labels(german_orig_test)
+    save_dir = '../aif360/data/npy_data/german-aif360preproc/'
+    # if not os._exists(save_dir):
+    #     os.makedirs(save_dir)
+    np.save('../aif360/data/npy_data/german-aif360preproc/labels-train.npy', german_orig_train.labels)
+    np.save('../aif360/data/npy_data/german-aif360preproc/labels-test.npy', german_orig_test.labels)
+    np.save('../aif360/data/npy_data/german-aif360preproc/features-train.npy', german_orig_train.features)
+    np.save('../aif360/data/npy_data/german-aif360preproc/features-test.npy', german_orig_test.features)
+    np.save('../aif360/data/npy_data/german-aif360preproc/2d-labels-train.npy', train_converted_labels)
+    np.save('../aif360/data/npy_data/german-aif360preproc/2d-labels-test.npy', test_converted_labels)
+
 
 
 #     bank marketing attr: age
@@ -204,18 +216,18 @@ if __name__ == '__main__':
     # np.save('../aif360/data/npy_data/meps-aif360preproc/2d-labels-test.npy', concat_2d_test_labels)
 
 
-    dataset_orig_home_credit = load_preproc_data_home_credit()
-    home_credit_orig_train, home_credit_orig_test = dataset_orig_home_credit.split([0.8], shuffle=False)
-    train_converted_labels = convert_two_dims_labels(home_credit_orig_train)
-    test_converted_labels = convert_two_dims_labels(home_credit_orig_test)
-    save_dir = '../aif360/data/npy_data/home_credit-aif360preproc/'
-    if not os._exists(save_dir):
-        os.makedirs(save_dir)
-    np.save('../aif360/data/npy_data/home_credit-aif360preproc/labels-train.npy', home_credit_orig_train.labels)
-    np.save('../aif360/data/npy_data/home_credit-aif360preproc/labels-test.npy', home_credit_orig_test.labels)
-    np.save('../aif360/data/npy_data/home_credit-aif360preproc/features-train.npy', home_credit_orig_train.features)
-    np.save('../aif360/data/npy_data/home_credit-aif360preproc/features-test.npy', home_credit_orig_test.features)
-    np.save('../aif360/data/npy_data/home_credit-aif360preproc/2d-labels-train.npy', train_converted_labels)
-    np.save('../aif360/data/npy_data/home_credit-aif360preproc/2d-labels-test.npy', test_converted_labels)
-    print('done')
+    # dataset_orig_home_credit = load_preproc_data_home_credit()
+    # home_credit_orig_train, home_credit_orig_test = dataset_orig_home_credit.split([0.8], shuffle=False)
+    # train_converted_labels = convert_two_dims_labels(home_credit_orig_train)
+    # test_converted_labels = convert_two_dims_labels(home_credit_orig_test)
+    # save_dir = '../aif360/data/npy_data/home_credit-aif360preproc/'
+    # if not os._exists(save_dir):
+    #     os.makedirs(save_dir)
+    # np.save('../aif360/data/npy_data/home_credit-aif360preproc/labels-train.npy', home_credit_orig_train.labels)
+    # np.save('../aif360/data/npy_data/home_credit-aif360preproc/labels-test.npy', home_credit_orig_test.labels)
+    # np.save('../aif360/data/npy_data/home_credit-aif360preproc/features-train.npy', home_credit_orig_train.features)
+    # np.save('../aif360/data/npy_data/home_credit-aif360preproc/features-test.npy', home_credit_orig_test.features)
+    # np.save('../aif360/data/npy_data/home_credit-aif360preproc/2d-labels-train.npy', train_converted_labels)
+    # np.save('../aif360/data/npy_data/home_credit-aif360preproc/2d-labels-test.npy', test_converted_labels)
+    # print('done')
 

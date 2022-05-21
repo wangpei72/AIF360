@@ -28,14 +28,11 @@ class GermanDataset(StandardDataset):
 
     def __init__(self, label_name='credit', favorable_classes=[1],
                  protected_attribute_names=['sex', 'age'],
-                 privileged_classes=[['male'], lambda x: x > 25],
+                 privileged_classes=[],
                  instance_weights_name=None,
-                 categorical_features=['status', 'credit_history', 'purpose',
-                     'savings', 'employment', 'other_debtors', 'property',
-                     'installment_plans', 'housing', 'skill_level', 'telephone',
-                     'foreign_worker'],
-                 features_to_keep=[], features_to_drop=['personal_status'],
-                 na_values=[], custom_preprocessing=default_preprocessing,
+                 categorical_features=[],
+                 features_to_keep=[], features_to_drop=[],
+                 na_values=[], custom_preprocessing=None,
                  metadata=default_mappings):
         """See :obj:`StandardDataset` for a description of the arguments.
 
@@ -77,6 +74,7 @@ class GermanDataset(StandardDataset):
         try:
             df = pd.read_csv(filepath, sep=' ', header=None, names=column_names,
                              na_values=na_values)
+
         except IOError as err:
             print("IOError: {}".format(err))
             print("To use this class, please download the following files:")
@@ -87,7 +85,7 @@ class GermanDataset(StandardDataset):
                 os.path.abspath(__file__), '..', '..', 'data', 'raw', 'german'))))
             import sys
             sys.exit(1)
-
+        # df.to_csv('german.csv')
         super(GermanDataset, self).__init__(df=df, label_name=label_name,
             favorable_classes=favorable_classes,
             protected_attribute_names=protected_attribute_names,

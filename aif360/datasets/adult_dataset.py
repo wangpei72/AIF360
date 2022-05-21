@@ -25,7 +25,7 @@ class AdultDataset(StandardDataset):
                  categorical_features=['workclass', 'education',
                      'marital-status', 'occupation', 'relationship',
                      'native-country'],
-                 features_to_keep=[], features_to_drop=['fnlwgt'],
+                 features_to_keep=[], features_to_drop=[],
                  na_values=['?'], custom_preprocessing=None,
                  metadata=default_mappings):
         """See :obj:`StandardDataset` for a description of the arguments.
@@ -103,7 +103,7 @@ class AdultDataset(StandardDataset):
             sys.exit(1)
 
         df = pd.concat([test, train], ignore_index=True)
-
+        # df.to_csv('adult.csv')
         super(AdultDataset, self).__init__(df=df, label_name=label_name,
             favorable_classes=favorable_classes,
             protected_attribute_names=protected_attribute_names,

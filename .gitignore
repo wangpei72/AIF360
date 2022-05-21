@@ -10,6 +10,8 @@ __pycache__/
 .idea/
 .vscode/
 
+aif360/data/npy_data/adult-aif360preproc/adult.csv
+
 .eggs/
 aif360.egg-info
 build/

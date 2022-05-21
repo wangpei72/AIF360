@@ -4,6 +4,8 @@ from aif360.datasets import AdultDataset, GermanDataset, \
 from aif360.datasets.helper_script.home_csv_helper import set_OneHotEncoder
 import pandas as pd
 import numpy as np
+from . import helper as hp
+
 
 def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=False, convert=True):
     def custom_preprocessing(df):
@@ -63,32 +65,51 @@ def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=F
             df = pd.concat([df_0, df_1])
         return df
 
-    XD_features = ['Age (decade)', 'Education Years', 'sex', 'race']
+    Y_features = ['income-per-year']
+    skip_feat = ['sex', 'race', 'education-num']
+    def custom_preprocessing_new(df):
+        # 1先找到标签 Y_features 转换成二分的，可能有些str要replace
+        df['income-per-year'] = df['income-per-year'].replace(to_replace='>50K.', value='>50K', regex=True)
+        df['income-per-year'] = df['income-per-year'].replace(to_replace='<=50K.', value='<=50K', regex=True)
+        # 2再找到敏感属性，进行二分的处理, 同时找到age属性，所有的age属性按照age思路再workflow进行处理，原先的处理都废弃
+        # 3 找到skip feat，包括的种类有 敏感属性，可以直接保留的属性例如edu yrs
+        df['sex'] = df['sex'].replace({'Female': 0, 'Male': 1})
+        df['race'] = df['race'].apply(lambda x: np.int(x == "White"))
+        df['income-per-year'] = df['income-per-year'].apply(lambda x: np.int(x == '>50K'))
+        # 3逐一观察numric的列，如果是小的无规则的列归一化为1-9;大的1-99;较为离散的二分成0-1
+        #  str类型不用管，会自动编码成数字
+        df = hp.work_flow(df, Y_features, skip_feat=skip_feat,
+                          binary_0_feat=['capital-gain', 'capital-loss'], age_feat='age')
+
+        return df
+    XD_features = ['age','workclass','fnlwgt','education','education-num','marital-status',
+                   'occupation','relationship','race','sex','capital-gain',
+                   'capital-loss','hours-per-week','native-country']
     D_features = ['sex', 'race'] if protected_attributes is None else protected_attributes
-    Y_features = ['Income Binary']
+    # Y_features = ['income-per-year']
     X_features = list(set(XD_features)-set(D_features))
-    categorical_features = ['Age (decade)', 'Education Years']
+    categorical_features = []
 
     # privileged classes
-    all_privileged_classes = {"sex": [1.0],
-                              "race": [1.0]}
+    all_privileged_classes = {'personal_status': [1],
+                              "race": [1]}
 
     # protected attribute maps
-    all_protected_attribute_maps = {"sex": {1.0: 'Male', 0.0: 'Female'},
-                                    "race": {1.0: 'White', 0.0: 'Non-white'}}
+    all_protected_attribute_maps = {'personal_status': {1: 'Male', 0: 'Female'},
+                                    "race": {1: 'White', 0: 'Non-white'}}
     dataset_adult = AdultDataset(
         label_name=Y_features[0],
-        favorable_classes=['>50K', '>50K.'],
+        favorable_classes=[1],
         protected_attribute_names=D_features,
         privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
         na_values=['?'],
-        metadata={'label_maps': [{1.0: '>50K', 0.0: '<=50K'}],
+        metadata={'label_maps': [{1: '>50K', 0: '<=50K'}],
                   'protected_attribute_maps': [all_protected_attribute_maps[x]
                                 for x in D_features]},
-        custom_preprocessing=custom_preprocessing)
+        custom_preprocessing=custom_preprocessing_new)
 
     return dataset_adult
 
@@ -275,9 +296,6 @@ def load_preproc_data_german(protected_attributes=None):
         status_map = {'A91': 1.0, 'A93': 1.0, 'A94': 1.0,
                     'A92': 0.0, 'A95': 0.0}
         df['sex'] = df['personal_status'].replace(status_map)
-
-
-        # group credit history, savings, and employment
         df['credit_history'] = df['credit_history'].apply(lambda x: group_credit_hist(x))
         df['savings'] = df['savings'].apply(lambda x: group_savings(x))
         df['employment'] = df['employment'].apply(lambda x: group_employ(x))
@@ -286,21 +304,40 @@ def load_preproc_data_german(protected_attributes=None):
 
         return df
 
-    # Feature partitions
-    XD_features = ['credit_history', 'savings', 'employment', 'sex', 'age']
-    D_features = ['sex', 'age'] if protected_attributes is None else protected_attributes
     Y_features = ['credit']
+    skip_feat = ['personal_status', 'investment_as_income_percentage', 'residence_since',
+                 'number_of_credits', 'people_liable_for']
+    # Feature partitions
+    XD_features = ['status','month','credit_history','purpose','credit_amount','savings','employment',\
+                  'investment_as_income_percentage','sex','other_debtors',\
+                'residence_since','property','age','installment_plans','housing','number_of_credits',\
+                'skill_level','people_liable_for','telephone','foreign_worker']
+    D_features = ['sex', 'age'] if protected_attributes is None else protected_attributes
+
     X_features = list(set(XD_features)-set(D_features))
-    categorical_features = ['credit_history', 'savings', 'employment']
+    categorical_features = []
 
     # privileged classes
-    all_privileged_classes = {"sex": [1.0],
-                              "age": [1.0]}
+    all_privileged_classes = {'sex': [1],
+                              "age": lambda x: x > 2} # 实际逻辑是 30往上才算old
 
     # protected attribute maps
-    all_protected_attribute_maps = {"sex": {1.0: 'Male', 0.0: 'Female'},
-                                    "age": {1.0: 'Old', 0.0: 'Young'}}
-
+    all_protected_attribute_maps = {'sex': {1: 'Male', 0: 'Female'},
+                                    "age": {1: 'Old', 0: 'Young'}}
+    label_maps = {1: 'Good Credit', 0: 'Bad Credit'}
+    def custom_preprocessing_new(df):
+        """ Custom pre-processing for German Credit Data
+        """
+        #label: 1 - good 0 - bad
+        df['credit'] = df['credit'].apply(lambda x: np.int(x == 1))
+        # pro attr: 'personal_status' (sex) 1- male 0-female
+        status_map = {'A91': 1, 'A93': 1, 'A94': 1,
+                      'A92': 0, 'A95': 0}
+        df['personal_status'] = df['personal_status'].replace(status_map)
+        df.rename(columns={'personal_status': 'sex'}, inplace=True)
+        df = hp.work_flow(df, y_labels=Y_features, skip_feat=skip_feat, age_feat='age')
+        hp.wrt_descrip_txt(df, 'german', Y_features, D_features, label_maps, all_protected_attribute_maps, all_privileged_classes)
+        return df
     return GermanDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
@@ -309,10 +346,10 @@ def load_preproc_data_german(protected_attributes=None):
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
-        metadata={ 'label_maps': [{1.0: 'Good Credit', 2.0: 'Bad Credit'}],
+        metadata={ 'label_maps': [{1: 'Good Credit', 0: 'Bad Credit'}],
                    'protected_attribute_maps': [all_protected_attribute_maps[x]
                                 for x in D_features]},
-        custom_preprocessing=custom_preprocessing)
+        custom_preprocessing=custom_preprocessing_new)
 
 def load_preproc_data_bank(protected_attributes=None):
     def custom_preprocessing(df):
