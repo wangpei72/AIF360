@@ -242,7 +242,8 @@ if __name__ == '__main__':
     label_maps = {1: 'yes', 0: 'no'}
 
     df = pd.read_csv('../../../data/raw/meps/h181.csv', sep=',', header=[0])
-    # df.dropna(inplace=True)
+    df.dropna(inplace=True)
+
     # df.drop('Unnamed: 0',axis=1, inplace=True)
     # df['Y'] = df['Y'].replace({'yes': 1, 'no': 0})
     # df['X2'] = df['X2'].replace({1: 1, 2: 0})
