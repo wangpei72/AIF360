@@ -9,7 +9,7 @@ __pycache__/
 .venv
 .idea/
 .vscode/
-
+*.csv
 */adult.csv
 
 aif360/npy_data/
