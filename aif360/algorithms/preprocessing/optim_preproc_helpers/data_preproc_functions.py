@@ -5,7 +5,11 @@ from aif360.datasets.helper_script.home_csv_helper import set_OneHotEncoder
 import pandas as pd
 import numpy as np
 from . import helper as hp
-
+from . import compas_helper as chp
+from . import bank_helper as bhp
+from . import heart_helper as hhp
+from . import student_helper as shp
+from . import default_credit_helper as dchp
 
 def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=False, convert=True):
     def custom_preprocessing(df):
@@ -67,6 +71,7 @@ def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=F
 
     Y_features = ['income-per-year']
     skip_feat = ['sex', 'race', 'education-num']
+    label_maps= {1: '>50K', 0: '<=50K'}
     def custom_preprocessing_new(df):
         # 1先找到标签 Y_features 转换成二分的，可能有些str要replace
         df['income-per-year'] = df['income-per-year'].replace(to_replace='>50K.', value='>50K', regex=True)
@@ -80,12 +85,13 @@ def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=F
         #  str类型不用管，会自动编码成数字
         df = hp.work_flow(df, Y_features, skip_feat=skip_feat,
                           binary_0_feat=['capital-gain', 'capital-loss'], age_feat='age')
-
+        hp.wrt_descrip_txt(df, 'adult', Y_feat=Y_features, D_feat=D_features,
+                           Y_map=label_maps, D_map=all_protected_attribute_maps,P_map=all_privileged_classes)
         return df
     XD_features = ['age','workclass','fnlwgt','education','education-num','marital-status',
-                   'occupation','relationship','race','sex','capital-gain',
+                   'occupation','relationship','race','personal_status','capital-gain',
                    'capital-loss','hours-per-week','native-country']
-    D_features = ['sex', 'race'] if protected_attributes is None else protected_attributes
+    D_features = ['personal_status', 'race'] if protected_attributes is None else protected_attributes
     # Y_features = ['income-per-year']
     X_features = list(set(XD_features)-set(D_features))
     categorical_features = []
@@ -97,11 +103,13 @@ def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=F
     # protected attribute maps
     all_protected_attribute_maps = {'personal_status': {1: 'Male', 0: 'Female'},
                                     "race": {1: 'White', 0: 'Non-white'}}
+    #  protected_attribute_names=D_features,
+    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
     dataset_adult = AdultDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=D_features,
-        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        protected_attribute_names=[],
+        privileged_classes=[],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -209,26 +217,91 @@ def load_preproc_data_compas(protected_attributes=None):
 
         return df
 
-    XD_features = ['age_cat', 'c_charge_degree', 'priors_count', 'sex', 'race']
-    D_features = ['sex', 'race']  if protected_attributes is None else protected_attributes
-    Y_features = ['two_year_recid']
-    X_features = list(set(XD_features)-set(D_features))
-    categorical_features = ['age_cat', 'priors_count', 'c_charge_degree']
-
-    # privileged classes
-    all_privileged_classes = {"sex": [1.0],
-                              "race": [1.0]}
-
+    XD_features = [
+        'name', 'first', 'last', 'sex', 'dob', 'age', 'age_cat', 'race', 'juv_fel_count'
+        , 'decile_score', 'juv_misd_count', 'juv_other_count', 'priors_count', 'days_b_screening_arrest', 'c_jail_in',
+        'c_jail_out', 'c_case_number', 'c_offense_date', 'c_arrest_date'
+        , 'c_days_from_compas', 'c_charge_degree', 'c_charge_desc', 'is_recid', 'r_case_number', 'r_charge_degree',
+        'r_days_from_arrest', 'r_offense_date', 'r_charge_desc', 'r_jail_in'
+        , 'r_jail_out', 'violent_recid', 'is_violent_recid', 'vr_case_number', 'vr_charge_degree', 'vr_offense_date',
+        'vr_charge_desc', 'type_of_assessment', 'decile_score.1', 'score_text'
+        , 'screening_date', 'v_type_of_assessment', 'v_decile_score', 'v_score_text', 'v_screening_date', 'in_custody',
+        'out_custody', 'priors_count.1', 'start', 'end'
+        , 'event'
+    ]
+    drop = ['id', 'name', 'first', 'last', 'compas_screening_date', 'r_case_number', 'dob',
+            'age_cat', 'c_case_number', 'c_offense_date', 'c_arrest_date', 'r_charge_degree',
+            'r_case_number', 'r_days_from_arrest',
+            'r_offense_date', 'violent_recid', 'vr_case_number',
+            'vr_charge_degree', 'vr_offense_date', 'vr_charge_desc', 'screening_date',
+            'v_screening_date', 'v_type_of_assessment', 'type_of_assessment', 'priors_count.1', 'decile_score.1']
+    D_features = ['sex', 'race']
+    X_features = list(set(XD_features) - set(drop) - set(D_features))
+    Y_features = ['two_year_recid']  # 优势为label ： 0
+    all_privileged_classes = {"sex": [1],
+                              "race": [1]}
     # protected attribute maps
-    all_protected_attribute_maps = {"sex": {0.0: 'Male', 1.0: 'Female'},
-                                    "race": {1.0: 'Caucasian', 0.0: 'Not Caucasian'}}
+    all_protected_attribute_maps = {"sex": {0: 'Male', 1: 'Female'},
+                                    "race": {1: 'Caucasian', 0: 'Not Caucasian'}}
+    label_maps = {1.0: 'Did recid.', 0.0: 'No recid.'}  # 优势label是 no-recid 无再犯
+    features_to_drop = ['compas_screening_date']
+    categorical_features = []
+    def custom_preprocessing_new(df):
+        df.drop([ 'name', 'first', 'last', 'compas_screening_date', 'r_case_number', 'dob',
+                 'age_cat', 'c_case_number', 'c_offense_date', 'c_arrest_date', 'r_charge_degree',
+                 'r_case_number', 'r_days_from_arrest',
+                 'r_offense_date', 'violent_recid', 'vr_case_number',
+                 'vr_charge_degree', 'vr_offense_date', 'vr_charge_desc', 'screening_date',
+                 'v_screening_date', 'v_type_of_assessment', 'type_of_assessment',
+                 'priors_count.1', 'decile_score.1'], axis=1, inplace=True)
+        # df = df.dropna()
+        # 进行日期的计算之前将所有日期都是na的行drop掉
+        df.dropna(subset=['out_custody', 'in_custody',
+                          'r_jail_in', 'r_jail_out',
+                          'c_jail_in', 'c_jail_out'], how='all', inplace=True)
 
+        newly_added_days_feat = ['length_of_stay', 'length_of_stay.1', 'length_of_stay.2']
+        df['length_of_stay'] = (pd.to_datetime(df['c_jail_out']) -
+                                pd.to_datetime(df['c_jail_in'])).apply(
+            lambda x: x.days)
+        df['length_of_stay.1'] = (pd.to_datetime(df['r_jail_out']) -
+                                  pd.to_datetime(df['r_jail_in'])).apply(
+            lambda x: x.days)
+        df['length_of_stay.2'] = (pd.to_datetime(df['out_custody']) -
+                                  pd.to_datetime(df['in_custody'])).apply(
+            lambda x: x.days)
+        df['start_end'] = df['start'].astype('int32') - df['end'].astype('int32')
+        df['max_duration'] = df[['length_of_stay', 'length_of_stay.1', 'length_of_stay.2']].max(axis=1)
+        # df = do_description(df)
+        df.drop(['out_custody', 'in_custody',
+                 'r_jail_in', 'r_jail_out',
+                 'c_jail_in', 'c_jail_out',
+                 'start', 'end',
+                 'length_of_stay', 'length_of_stay.1', 'length_of_stay.2'], axis=1, inplace=True)
+        df['sex'] = df['sex'].replace({'Female': 1, 'Male': 0})
+        df['race'] = df['race'].apply(lambda x: np.int(x == 'Caucasian'))
+        skip_feat = ['sex', 'race', 'juv_fel_count', 'decile_score', 'juv_misd_count', 'juv_other_count',
+                     'priors_count', 'is_recid', 'is_violent_recid', 'decile_score.1', 'v_decile_score',
+                     'priors_count.1', 'event']
+        norm_0_99 = ['start', 'end', 'max_duration', 'start_end']
+        norm_0_9 = []
+        c_days = ['c_days_from_compas']
+        days_b = ['days_b_screening_arrest']
+        age_div_10 = ['age']
 
+        df = chp.work_flow(df, y_labels=Y_features, skip_feat=skip_feat, age_div_10=age_div_10,
+                       norm_0_99=norm_0_99, norm_0_9=norm_0_9, days=newly_added_days_feat, c_days_from_compas=c_days,
+                       days_b_screening_arrest=days_b)
+        # df.to_csv('df_compas.csv')
+        hp.wrt_descrip_txt(df, 'compas', Y_feat=Y_features, D_feat=D_features, Y_map=label_maps
+                               , D_map=all_protected_attribute_maps, P_map=all_privileged_classes)
+        return df
+    # 被清零的privileged_classes [all_privileged_classes[x] for x in D_features]
     return CompasDataset(
         label_name=Y_features[0],
         favorable_classes=[0],
-        protected_attribute_names=D_features,
-        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        protected_attribute_names=[],
+        privileged_classes=[],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -236,7 +309,8 @@ def load_preproc_data_compas(protected_attributes=None):
         metadata={'label_maps': [{1.0: 'Did recid.', 0.0: 'No recid.'}],
                   'protected_attribute_maps': [all_protected_attribute_maps[x]
                                 for x in D_features]},
-        custom_preprocessing=custom_preprocessing)
+        custom_preprocessing=custom_preprocessing_new)
+
 
 def load_preproc_data_german(protected_attributes=None):
     """
@@ -303,28 +377,28 @@ def load_preproc_data_german(protected_attributes=None):
         df['status'] = df['status'].apply(lambda x: group_status(x))
 
         return df
-
-    Y_features = ['credit']
-    skip_feat = ['personal_status', 'investment_as_income_percentage', 'residence_since',
-                 'number_of_credits', 'people_liable_for']
-    # Feature partitions
-    XD_features = ['status','month','credit_history','purpose','credit_amount','savings','employment',\
-                  'investment_as_income_percentage','sex','other_debtors',\
-                'residence_since','property','age','installment_plans','housing','number_of_credits',\
-                'skill_level','people_liable_for','telephone','foreign_worker']
-    D_features = ['sex', 'age'] if protected_attributes is None else protected_attributes
-
-    X_features = list(set(XD_features)-set(D_features))
     categorical_features = []
 
     # privileged classes
-    all_privileged_classes = {'sex': [1],
-                              "age": lambda x: x > 2} # 实际逻辑是 30往上才算old
+    all_privileged_classes = {'personal_status': [1],
+                              "age": lambda x: x > 2.5} # 实际逻辑是 30往上才算old
 
     # protected attribute maps
-    all_protected_attribute_maps = {'sex': {1: 'Male', 0: 'Female'},
+    all_protected_attribute_maps = {'personal_status': {1: 'Male', 0: 'Female'},
                                     "age": {1: 'Old', 0: 'Young'}}
     label_maps = {1: 'Good Credit', 0: 'Bad Credit'}
+    XD_features = ['status','month','credit_history','purpose','credit_amount','savings','employment',\
+                  'investment_as_income_percentage','personal_status','other_debtors',\
+                'residence_since','property','age','installment_plans','housing','number_of_credits',\
+                'skill_level','people_liable_for','telephone','foreign_worker']
+    D_features = ['personal_status', 'age'] if protected_attributes is None else protected_attributes
+
+    X_features = list(set(XD_features)-set(D_features))
+    Y_features = ['credit']
+    skip_feat = ['personal_status', 'investment_as_income_percentage', 'residence_since',
+                 'number_of_credits', 'people_liable_for']
+    norm_1_99 = ['credit_amount']
+    age_div_10 = ['age']
     def custom_preprocessing_new(df):
         """ Custom pre-processing for German Credit Data
         """
@@ -334,15 +408,18 @@ def load_preproc_data_german(protected_attributes=None):
         status_map = {'A91': 1, 'A93': 1, 'A94': 1,
                       'A92': 0, 'A95': 0}
         df['personal_status'] = df['personal_status'].replace(status_map)
-        df.rename(columns={'personal_status': 'sex'}, inplace=True)
-        df = hp.work_flow(df, y_labels=Y_features, skip_feat=skip_feat, age_feat='age')
+        # df.rename(columns={'personal_status': 'sex'}, inplace=True)
+        df = hp.work_flow(df, y_labels=Y_features, skip_feat=skip_feat, age_div_10=age_div_10,
+                          norm_1_99=norm_1_99
+                          )
         hp.wrt_descrip_txt(df, 'german', Y_features, D_features, label_maps, all_protected_attribute_maps, all_privileged_classes)
         return df
+    # TODO 进行numpy导出的时候，不做pri的lambda防止数据被更改为0-1的
     return GermanDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=D_features,
-        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        protected_attribute_names=[],
+        privileged_classes=[],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -464,38 +541,64 @@ def load_preproc_data_bank(protected_attributes=None):
         # TODO default开始 5-11的属性的categorical属性没有做group，12-15是数字的反而做了，可能是不需要的？
 
         return df
-
-    # 特征分离 partitions
+        # 特征分离 partitions
     XD_features = ['age', 'job', 'marital', 'Education Years',
-                   'default', 'housing', 'loan',
-                   'campaign', 'pdays', 'previous',
-                   'poutcome']
+                       'default', 'housing', 'loan',
+                       'campaign', 'pdays', 'previous',
+                       'poutcome']
+    drop = []
     D_features = ['age']
     Y_features = ['y']
-    X_features = list(set(XD_features) - set(D_features))
+    X_features = list(set(XD_features) - set(drop) - set(D_features))
     categorical_features = ['job', 'marital', 'Education Years',
-                            'default', 'housing', 'loan', 'campaign', 'pdays', 'previous',
-                            'poutcome']
+                                'default', 'housing', 'loan', 'campaign', 'pdays', 'previous',
+                                'poutcome']
 
     # privileged classes 优势类别
     all_privileged_classes = {"age": [1.0]}
 
     # 敏感属性映射
     all_protected_attribute_maps = {'age': {1.0: 'Old', 0.0: 'Young'}}
+    label_maps = {1.0: 'yes', 0.0: 'no'}
+    r_y_map = {'yes': 1, 'no': 0}
 
+    def custom_preprocessing_new(df):
+        # df = pd.read_csv('../../../data/raw/bank/bank-additional.csv', sep=';', na_values="unknown")
+        # 1 dropna不用特地做
+        # 2 敏感属性优劣势处理 标签优劣势处理 特判的列表例如age
+        age_div_10 = ['age']
+        df["y"] = df["y"].replace(r_y_map)
+        # 3 进行numeric归一化方式的判断，整理出list，传入workflow参数
+        int_cas = [
+            "campaign", "previous"
+        ]
+        norm_0_99 = ['start', 'end', 'max_duration', 'start_end']
+        bin_0 = ["emp.var.rate"]
+        bin_4_5 = ["euribor3m"]
+        bin_93 = ["cons.price.idx"]
+        bin_999 = ["pdays"]
 
+        df = bhp.work_flow(df, y_labels=Y_features, int_cas=int_cas, age_div_10=age_div_10, bin_0=bin_0,
+                       bin_4_5=bin_4_5, bin_93=bin_93, bin_999=bin_999)
+        hp.wrt_descrip_txt(df, 'bank', Y_feat=Y_features, D_feat=D_features,
+                               Y_map=label_maps, D_map=all_protected_attribute_maps,
+                               P_map=all_privileged_classes)
+        return df
+    # 为了防止奇怪行为，导出npy时候这两个参数被删掉了
+    # protected_attribute_names=D_features,
+    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
     dataset_bank = BankDataset(
         label_name=Y_features[0],
-        favorable_classes=['yes'],
-        protected_attribute_names=D_features,
-        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        favorable_classes=[1],
+        protected_attribute_names=[],
+        privileged_classes=[],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
         metadata={ 'label_maps': [{1.0: 'yes', 0.0: 'no'}],
                    'protected_attribute_maps': [all_protected_attribute_maps[x]
                                                 for x in D_features]},
-        custom_preprocessing=custom_preprocessing)
+        custom_preprocessing=custom_preprocessing_new)
 
     return dataset_bank
 
@@ -523,34 +626,55 @@ def load_preproc_data_default(protected_attributes=None):
         df['SEX'] = df['SEX'].replace({2: 0.0, 1: 1.0})  # 1 = male while 2= female
 
         return df
+    def custom_preprocessing_new(df):
+        # df = pd.read_csv('../../../data/raw/default/default_of_credit_card_clients.csv', sep=',', header=[0],
+        #                  skiprows=[1])
+        df.drop('Unnamed: 0', axis=1, inplace=True)
+        df['Y'] = df['Y'].replace({'yes': 1, 'no': 0})
+        df['X2'] = df['X2'].replace({1: 1, 2: 0})
+        # # 3 进行numeric归一化方式的判断，整理出list，传入workflow参数
+        # int_cas = []
+        age_div_10 = ['X5']
+        skip_feat = ['X2', 'X3', 'X4', 'X6', 'X7', 'X8', 'X9', 'X10', 'X11']
+        norm_99_99 = ['X12', 'X13', 'X14', 'X15', 'X16', 'X17']
+        norm_0_99 = ['X18', 'X19', 'X20', 'X21', 'X22', 'X23']
+        norm_1_99 = ['X1']
+        df = dchp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10,
+                       skip_feat=skip_feat, norm_0_99=norm_0_99,
+                       norm_99_99=norm_99_99, norm_1_99=norm_1_99)
+        hp.wrt_descrip_txt(df, 'default', Y_feat=Y_features, D_feat=D_features,
+                               Y_map=label_maps, D_map=all_protected_attribute_maps,
+                               P_map=all_privileged_classes)
+        return df
 
-    XD_features = ['LIMIT_BAL', 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE',
-                   'PAY_0', 'PAY_2', 'PAY_3', 'PAY_4', 'PAY_5', 'PAY_6',
-                   'BILL_AMT1', 'BILL_AMT2', 'BILL_AMT3', 'BILL_AMT4', 'BILL_AMT5','BILL_AMT6',
-                   'PAY_AMT1', 'PAY_AMT2', 'PAY_AMT3', 'PAY_AMT4', 'PAY_AMT5', 'PAY_AMT6'
-                   ]
-    D_features = ['AGE'] if protected_attributes is None else protected_attributes
-    Y_features = ['default payment next month']
-    X_features = list(set(XD_features) - set(D_features))
-    categorical_features = ['LIMIT_BAL']
+    XD_features = ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10'
+        , 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20'
+        , 'X21', 'X22', 'X23']
+    drop = []
+    d_features_in_x = ['X2']
+    D_features = ['sex']
+    X_features = list(set(XD_features) - set(drop) - set(d_features_in_x))
+    Y_features = ['Y']
 
-    # pri classes
-    all_privileged_classes = {'AGE': [1.0]}
+    all_privileged_classes = {'sex': [1]}
+    all_protected_attribute_maps = {'X2': {1: 'Male', 0: 'Female'}}
+    label_maps = {1: 'yes', 0: 'no'}
+    categorical_features = []
 
-    # protected attr maps
-    all_protected_attribute_maps = {'AGE': {1.0: 'Old', 0.0: 'Young'}}
 
+    # protected_attribute_names=D_features,
+    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
     dataset_default = DefaultCreditDataset(
         label_name=Y_features[0],
-        favorable_classes=[1],
-        protected_attribute_names=D_features,
-        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        favorable_classes=[0],
+        protected_attribute_names=[],
+        privileged_classes=[],
         instance_weights_name=None,
         categorical_features=categorical_features,
-        features_to_keep=X_features+Y_features+D_features,
-        metadata={'label_maps': [{1.0: 'default payment', 0.0: 'non-default payment'}],
-                  'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
-        custom_preprocessing=custom_preprocessing)
+        features_to_keep=X_features+Y_features+d_features_in_x,
+        metadata={'label_maps': [{1: 'default payment', 0: 'non-default payment'}],
+                  'protected_attribute_maps': [all_protected_attribute_maps[x] for x in d_features_in_x]},
+        custom_preprocessing=custom_preprocessing_new)
     return dataset_default
 
 
@@ -565,33 +689,60 @@ def load_preproc_data_heart(protected_attributes=None):
         # df['Probability'] = pd.DataFrame.where(df, df['Probability'] == 0, other=1)
         return df
 
-    XD_features = ['age', 'sex', 'cp', 'trestbps', 'chol',
-                   'fbs', 'restecg', 'thalach', 'exang',
-                   'oldpeak','slope','ca','thal'
-                   ]
-    D_features = ['age'] if protected_attributes is None else protected_attributes
+    XD_features = ['age'
+        , 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'slope'
+        , 'ca', 'thal']
+    drop = []
+    D_features = ['age']
+    X_features = list(set(XD_features) - set(drop) - set(D_features))
+
     Y_features = ['Probability']
-    X_features = list(set(XD_features) - set(D_features))
+    all_privileged_classes = {"age": [1]}
+    all_protected_attribute_maps = {'age': {1: 'Old', 0: 'Young'}}
+    label_maps = {1: 'absence', 0: 'presence'}
+    def custom_preprocessing_new(df):
+
+        r_y_map = {'absence': 1, 'presence': 0}
+        # 1 dropna不用特地做
+        # 2 敏感属性优劣势处理 标签优劣势处理 特判的列表例如age
+
+        df['Probability'] = df['Probability'].apply(lambda x: int(x == 0))
+        # 3 进行numeric归一化方式的判断，整理出list，传入workflow参数
+        int_cas = []
+        age_div_10 = ['age']
+        skip_feat = ['sex', 'cp', 'fbs', 'restecg',
+                     'exang', 'slope', 'ca', 'thal']
+        norm_0_9 = ['oldpeak']
+        norm_1_9 = ['trestbps', 'chol']  # default
+
+        df = hhp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10, skip_feat=skip_feat,
+                       norm_0_9=norm_0_9)
+        hp.wrt_descrip_txt(df, 'heart', Y_feat=Y_features, D_feat=D_features,
+                               Y_map=label_maps, D_map=all_protected_attribute_maps,
+                               P_map=all_privileged_classes)
+        return df
+
     categorical_features = []
 
     # pri classes 年轻的人患病可能性较小 属于优势群体 因此上面的lambda表达式给的也是小于号
     # 同时 prob为0 表示没有患病可能的属于优势
-    all_privileged_classes = {'age': [1.0]}
+
 
     # protected attr maps
-    all_protected_attribute_maps = {'age': {1.0: 'Young', 0.0: 'Old'}}
 
+    # protected_attribute_names=D_features,
+    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
     dataset_heart = HeartDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=D_features,
-        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        protected_attribute_names=[],
+        privileged_classes=[],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
         metadata={'label_maps': [{1.0: 'absence', 0.0: 'presence'}],
                   'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
-        custom_preprocessing=custom_preprocessing)
+        custom_preprocessing=custom_preprocessing_new)
     return dataset_heart
 
 def load_preproc_data_student(protected_attributes=None):
@@ -639,36 +790,50 @@ def load_preproc_data_student(protected_attributes=None):
         # df['Probability'] = pd.DataFrame.where(df, df['Probability'] == 0, other=1)
         return df
 
-    XD_features = ['school','sex','age','address','famsize','Pstatus',
-                   'Medu','Fedu','Mjob','Fjob','reason',
-                   'guardian','traveltime','studytime','failures','schoolsup',
-                   'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet',
-                   'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc',
-                   'health', 'absences', 'G1', 'G2'
-                   ]
-    D_features = ['sex'] if protected_attributes is None else protected_attributes
+    XD_features = ['school'
+        , 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu', 'Mjob', 'Fjob', 'reason'
+        , 'guardian', 'traveltime', 'studytime', 'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'nursery',
+                   'higher'
+        , 'internet', 'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences', 'G1'
+        , 'G2']
+    drop = []
+    D_features = ['sex']
+    X_features = list(set(XD_features) - set(drop) - set(D_features))
     Y_features = ['Probability']
-    X_features = list(set(XD_features) - set(D_features))
+
+    all_privileged_classes = {'sex': [1]}
+    all_protected_attribute_maps = {'sex': {1: 'Male', 0: 'Female'}}
+    label_maps = {1: 'higher than mean', 0: 'lower than mean'}
     categorical_features = []
+    def custom_preprocessing_new(df):
+        df['sex'] = df['sex'].replace({'F': 0, 'M': 1})
+        mean_of_y = df['Probability'].mean()
+        df['Probability'] = df['Probability'].apply(lambda x: int(x >= mean_of_y))
+        # 3 进行numeric归一化方式的判断，整理出list，传入workflow参数
+        int_cas = []
+        # age_div_10 = ['age']
+        skip_feat = ['sex',
+                     'age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures',
+                     'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences', 'G1', 'G2']
 
-    # pri classes 1表示分数大于平均数
-    # 优势群体为男性 M
-    all_privileged_classes = {'sex': [1.0]}
-
-    # protected attr maps
-    all_protected_attribute_maps = {'sex': {1.0: 'Male', 0.0: 'Female'}}
-
+        df = shp.work_flow(df, y_labels=Y_features, skip_feat=skip_feat)
+        hp.wrt_descrip_txt(df, 'student', Y_feat=Y_features, D_feat=D_features,
+                               Y_map=label_maps, D_map=all_protected_attribute_maps,
+                               P_map=all_privileged_classes)
+        return df
+    #     protected_attribute_names=D_features,
+    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
     dataset_student = StudentDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=D_features,
-        privileged_classes=[all_privileged_classes[x] for x in D_features],
+        protected_attribute_names=[],
+        privileged_classes=[],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
         metadata={'label_maps': [{1.0: 'higher than mean', 0.0: 'lower than mean'}],
                   'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
-        custom_preprocessing=custom_preprocessing)
+        custom_preprocessing=custom_preprocessing_new)
     return dataset_student
 
 def load_preproc_data_meps19(protected_attributes=None):

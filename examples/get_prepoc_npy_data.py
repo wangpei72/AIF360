@@ -43,61 +43,66 @@ if __name__ == '__main__':
 #
 # #     compas protected-attr : sex race
 #     dataset_orig_compas = load_preproc_data_compas()
-#
-#     dataset_orig_train, dataset_orig_test = dataset_orig_compas.split([0.8], shuffle=True)
-#     train_converted_labels = convert_two_dims_labels(dataset_orig_train)
-#     test_converted_labels = convert_two_dims_labels(dataset_orig_test)
-#
-    # np.save('../aif360/data/npy_data/compas-aif360preproc/2d-labels-train.npy', train_converted_labels)
-#     np.save('../aif360/data/npy_data/compas-aif360preproc/2d-labels-test.npy', test_converted_labels)
-#
-# # German credit protected attr : sex
-    dataset_orig_german = load_preproc_data_german()
-    german_orig_train, german_orig_test = dataset_orig_german.split([0.8], shuffle=False)
-    train_converted_labels = convert_two_dims_labels(german_orig_train)
-    test_converted_labels = convert_two_dims_labels(german_orig_test)
-    save_dir = '../aif360/data/npy_data/german-aif360preproc/'
-    # if not os._exists(save_dir):
-    #     os.makedirs(save_dir)
-    np.save('../aif360/data/npy_data/german-aif360preproc/labels-train.npy', german_orig_train.labels)
-    np.save('../aif360/data/npy_data/german-aif360preproc/labels-test.npy', german_orig_test.labels)
-    np.save('../aif360/data/npy_data/german-aif360preproc/features-train.npy', german_orig_train.features)
-    np.save('../aif360/data/npy_data/german-aif360preproc/features-test.npy', german_orig_test.features)
-    np.save('../aif360/data/npy_data/german-aif360preproc/2d-labels-train.npy', train_converted_labels)
-    np.save('../aif360/data/npy_data/german-aif360preproc/2d-labels-test.npy', test_converted_labels)
-
-
-
-#     bank marketing attr: age
-#     dataset_orig_bank = load_preproc_data_bank()
-#     bank_orig_train, bank_orig_test = dataset_orig_bank.split([0.8], shuffle=True)
-#     train_converted_labels = convert_two_dims_labels(bank_orig_train)
-#     test_converted_labels = convert_two_dims_labels(bank_orig_test)
-#     save_dir = '../aif360/data/npy_data/bank-aif360preproc/'
-#     # if not os._exists(save_dir):
-#     #     os.makedirs(save_dir)
-#     np.save('../aif360/data/npy_data/bank-aif360preproc/labels-train.npy', bank_orig_train.labels)
-#     np.save('../aif360/data/npy_data/bank-aif360preproc/labels-test.npy', bank_orig_test.labels)
-#     np.save('../aif360/data/npy_data/bank-aif360preproc/features-train.npy', bank_orig_train.features)
-#     np.save('../aif360/data/npy_data/bank-aif360preproc/features-test.npy', bank_orig_test.features)
-#     np.save('../aif360/data/npy_data/bank-aif360preproc/2d-labels-train.npy', train_converted_labels)
-#     np.save('../aif360/data/npy_data/bank-aif360preproc/2d-labels-test.npy', test_converted_labels)
-#     print('done')
-
-#     default credit card  pro-attr: age (<25/ >= 25)
-#     dataset_orig_default = load_preproc_data_default()
-#     default_orig_train, default_orig_test = dataset_orig_default.split([0.8], shuffle=False)
-#     train_converted_labels = convert_two_dims_labels(default_orig_train)
-#     test_converted_labels = convert_two_dims_labels(default_orig_test)
-#     save_dir = '../aif360/data/npy_data/default-aif360preproc/'
+#     compas_orig_train, compas_orig_test = dataset_orig_compas.split([0.8], shuffle=False)
+#     train_converted_labels = convert_two_dims_labels(compas_orig_train)
+#     test_converted_labels = convert_two_dims_labels(compas_orig_test)
+#     save_dir = '../aif360/data/npy_data/compas-aif360preproc/'
 #     if not os._exists(save_dir):
 #         os.makedirs(save_dir)
-#     np.save('../aif360/data/npy_data/default-aif360preproc/labels-train.npy', default_orig_train.labels)
-#     np.save('../aif360/data/npy_data/default-aif360preproc/labels-test.npy', default_orig_test.labels)
-#     np.save('../aif360/data/npy_data/default-aif360preproc/features-train.npy', default_orig_train.features)
-#     np.save('../aif360/data/npy_data/default-aif360preproc/features-test.npy', default_orig_test.features)
-#     np.save('../aif360/data/npy_data/default-aif360preproc/2d-labels-train.npy', train_converted_labels)
-#     np.save('../aif360/data/npy_data/default-aif360preproc/2d-labels-test.npy', test_converted_labels)
+#     np.save('../aif360/data/npy_data/compas-aif360preproc/labels-train.npy', compas_orig_train.labels)
+#     np.save('../aif360/data/npy_data/compas-aif360preproc/labels-test.npy', compas_orig_test.labels)
+#     np.save('../aif360/data/npy_data/compas-aif360preproc/features-train.npy', compas_orig_train.features)
+#     np.save('../aif360/data/npy_data/compas-aif360preproc/features-test.npy', compas_orig_test.features)
+#     np.save('../aif360/data/npy_data/compas-aif360preproc/2d-labels-train.npy', train_converted_labels)
+#     np.save('../aif360/data/npy_data/compas-aif360preproc/2d-labels-test.npy', test_converted_labels)
+
+# # German credit protected attr : sex
+#     dataset_orig_german = load_preproc_data_german()
+#     german_orig_train, german_orig_test = dataset_orig_german.split([0.8], shuffle=False)
+#     train_converted_labels = convert_two_dims_labels(german_orig_train)
+#     test_converted_labels = convert_two_dims_labels(german_orig_test)
+#     save_dir = '../aif360/data/npy_data/german-aif360preproc/'
+#     # if not os._exists(save_dir):
+#     #     os.makedirs(save_dir)
+#     np.save('../aif360/data/npy_data/german-aif360preproc/labels-train.npy', german_orig_train.labels)
+#     np.save('../aif360/data/npy_data/german-aif360preproc/labels-test.npy', german_orig_test.labels)
+#     np.save('../aif360/data/npy_data/german-aif360preproc/features-train.npy', german_orig_train.features)
+#     np.save('../aif360/data/npy_data/german-aif360preproc/features-test.npy', german_orig_test.features)
+#     np.save('../aif360/data/npy_data/german-aif360preproc/2d-labels-train.npy', train_converted_labels)
+#     np.save('../aif360/data/npy_data/german-aif360preproc/2d-labels-test.npy', test_converted_labels)
+
+
+
+    # bank marketing attr: age
+    # dataset_orig_bank = load_preproc_data_bank()
+    # bank_orig_train, bank_orig_test = dataset_orig_bank.split([0.8], shuffle=False)
+    # train_converted_labels = convert_two_dims_labels(bank_orig_train)
+    # test_converted_labels = convert_two_dims_labels(bank_orig_test)
+    # save_dir = '../aif360/data/npy_data/bank-aif360preproc/'
+    # # if not os._exists(save_dir):
+    # #     os.makedirs(save_dir)
+    # np.save('../aif360/data/npy_data/bank-aif360preproc/labels-train.npy', bank_orig_train.labels)
+    # np.save('../aif360/data/npy_data/bank-aif360preproc/labels-test.npy', bank_orig_test.labels)
+    # np.save('../aif360/data/npy_data/bank-aif360preproc/features-train.npy', bank_orig_train.features)
+    # np.save('../aif360/data/npy_data/bank-aif360preproc/features-test.npy', bank_orig_test.features)
+    # np.save('../aif360/data/npy_data/bank-aif360preproc/2d-labels-train.npy', train_converted_labels)
+    # np.save('../aif360/data/npy_data/bank-aif360preproc/2d-labels-test.npy', test_converted_labels)
+    # print('done')
+
+#     default credit card  pro-attr: age (<25/ >= 25)
+    dataset_orig_default = load_preproc_data_default()
+    default_orig_train, default_orig_test = dataset_orig_default.split([0.8], shuffle=False)
+    train_converted_labels = convert_two_dims_labels(default_orig_train)
+    test_converted_labels = convert_two_dims_labels(default_orig_test)
+    save_dir = '../aif360/data/npy_data/default-aif360preproc/'
+    if not os._exists(save_dir):
+        os.makedirs(save_dir)
+    np.save('../aif360/data/npy_data/default-aif360preproc/labels-train.npy', default_orig_train.labels)
+    np.save('../aif360/data/npy_data/default-aif360preproc/labels-test.npy', default_orig_test.labels)
+    np.save('../aif360/data/npy_data/default-aif360preproc/features-train.npy', default_orig_train.features)
+    np.save('../aif360/data/npy_data/default-aif360preproc/features-test.npy', default_orig_test.features)
+    np.save('../aif360/data/npy_data/default-aif360preproc/2d-labels-train.npy', train_converted_labels)
+    np.save('../aif360/data/npy_data/default-aif360preproc/2d-labels-test.npy', test_converted_labels)
 
 
 # #    heart pro-attr: age (<54.4/ >= 54.4)
@@ -137,6 +142,7 @@ if __name__ == '__main__':
 #     train_converted_labels = convert_two_dims_labels(meps19_orig_train)
 #     test_converted_labels = convert_two_dims_labels(meps19_orig_test)
 #     save_dir = '../aif360/data/npy_data/meps19-aif360preproc/'
+#     if not os._exists(save_dir):
 #     if not os._exists(save_dir):
 #         os.makedirs(save_dir)
 #     np.save('../aif360/data/npy_data/meps19-aif360preproc/labels-train.npy', meps19_orig_train.labels)

@@ -35,7 +35,8 @@ class DefaultCreditDataset(StandardDataset):
             '..', 'data', 'raw', 'default', 'default_of_credit_card_clients.csv')
 
         try:
-            df = pd.read_csv(filepath, header=1, sep=',', na_values=na_values)
+            df = pd.read_csv(filepath, sep=',', na_values=na_values, header=[0],
+                         skiprows=[1])
         except IOError as err:
             print("IOError: {}".format(err))
             print("To use this class, please download the following file:")

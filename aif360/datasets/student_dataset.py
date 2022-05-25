@@ -22,7 +22,7 @@ class StudentDataset(StandardDataset):
                  instance_weights_name=None,
                  categorical_features=[],
                  features_to_keep=[], features_to_drop=[],
-                 na_values=["unknown"], custom_preprocessing=None,
+                 na_values=[], custom_preprocessing=None,
                  metadata=default_mappings):
         """See :obj:`StandardDataset` for a description of the arguments.
 

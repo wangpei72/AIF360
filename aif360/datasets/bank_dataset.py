@@ -16,13 +16,11 @@ class BankDataset(StandardDataset):
     See :file:`aif360/data/raw/bank/README.md`.
     """
 
-    def __init__(self, label_name='y', favorable_classes=['yes'],
-                 protected_attribute_names=['age'],
-                 privileged_classes=[lambda x: x >= 25],
+    def __init__(self, label_name='y', favorable_classes=[1],
+                 protected_attribute_names=[],
+                 privileged_classes=[],
                  instance_weights_name=None,
-                 categorical_features=['job', 'marital', 'education', 'default',
-                     'housing', 'loan', 'contact', 'month', 'day_of_week',
-                     'poutcome'],
+                 categorical_features=[],
                  features_to_keep=[], features_to_drop=[],
                  na_values=["unknown"], custom_preprocessing=None,
                  metadata=default_mappings):
@@ -34,7 +32,7 @@ class BankDataset(StandardDataset):
         """
 
         filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-            '..', 'data', 'raw', 'bank', 'bank-additional-full.csv')
+            '..', 'data', 'raw', 'bank', 'bank-additional.csv')
 
         try:
             df = pd.read_csv(filepath, sep=';', na_values=na_values)
