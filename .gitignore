@@ -10,8 +10,8 @@ __pycache__/
 .idea/
 .vscode/
 
-aif360/data/npy_data/adult-aif360preproc/adult.csv
-aif360/datasets/helper_script/home_onehot_12_16.csv
+*/adult.csv
+
 aif360/data/raw/
 .eggs/
 aif360.egg-info
