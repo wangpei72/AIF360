@@ -24,6 +24,7 @@ coverage.txt
 docs/build/
 docs/source/modules/generated
 
+aif360/data/npy_data/
 aif360/version.py
 aif360/data/raw/**
 !aif360/data/raw/*/*.md
