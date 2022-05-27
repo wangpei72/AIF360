@@ -26,7 +26,7 @@ def default_preprocessing(df):
     df['RACEV2X'] = df.apply(lambda row: race(row), axis=1)
     df = df.rename(columns = {'RACEV2X' : 'RACE'})
 
-    df = df[df['PANEL'] == 19]
+    # df = df[df['PANEL'] == 19]
 
     # RENAME COLUMNS
     df = df.rename(columns = {'FTSTU53X' : 'FTSTU', 'ACTDTY53' : 'ACTDTY', 'HONRDC53' : 'HONRDC', 'RTHLTH53' : 'RTHLTH',
@@ -66,23 +66,27 @@ class MEPSDataset19(StandardDataset):
 
     See :file:`aif360/data/raw/meps/README.md`.
     """
-
+    # protected_attribute_names=['RACE'],
+    #                  privileged_classes=[['White']],
+    #  categorical_features=['REGION','SEX','MARRY',
+    #                                  'FTSTU','ACTDTY','HONRDC','RTHLTH','MNHLTH','HIBPDX','CHDDX','ANGIDX',
+    #                                  'MIDX','OHRTDX','STRKDX','EMPHDX','CHBRON','CHOLDX','CANCERDX','DIABDX',
+    #                                  'JTPAIN','ARTHDX','ARTHTYPE','ASTHDX','ADHDADDX','PREGNT','WLKLIM',
+    #                                  'ACTLIM','SOCLIM','COGLIM','DFHEAR42','DFSEE42','ADSMOK42',
+    #                                  'PHQ242','EMPST','POVCAT','INSCOV'],
+    #                  features_to_keep=['REGION','AGE','SEX','RACE','MARRY',
+    #                                  'FTSTU','ACTDTY','HONRDC','RTHLTH','MNHLTH','HIBPDX','CHDDX','ANGIDX',
+    #                                  'MIDX','OHRTDX','STRKDX','EMPHDX','CHBRON','CHOLDX','CANCERDX','DIABDX',
+    #                                  'JTPAIN','ARTHDX','ARTHTYPE','ASTHDX','ADHDADDX','PREGNT','WLKLIM',
+    #                                  'ACTLIM','SOCLIM','COGLIM','DFHEAR42','DFSEE42','ADSMOK42','PCS42',
+    #                                  'MCS42','K6SUM42','PHQ242','EMPST','POVCAT','INSCOV','UTILIZATION','PERWT15F']
+    # instance_weights_name='PERWT15F',
     def __init__(self, label_name='UTILIZATION', favorable_classes=[1.0],
-                 protected_attribute_names=['RACE'],
-                 privileged_classes=[['White']],
+                 protected_attribute_names=[],
+                 privileged_classes=[],
                  instance_weights_name='PERWT15F',
-                 categorical_features=['REGION','SEX','MARRY',
-                                 'FTSTU','ACTDTY','HONRDC','RTHLTH','MNHLTH','HIBPDX','CHDDX','ANGIDX',
-                                 'MIDX','OHRTDX','STRKDX','EMPHDX','CHBRON','CHOLDX','CANCERDX','DIABDX',
-                                 'JTPAIN','ARTHDX','ARTHTYPE','ASTHDX','ADHDADDX','PREGNT','WLKLIM',
-                                 'ACTLIM','SOCLIM','COGLIM','DFHEAR42','DFSEE42','ADSMOK42',
-                                 'PHQ242','EMPST','POVCAT','INSCOV'],
-                 features_to_keep=['REGION','AGE','SEX','RACE','MARRY',
-                                 'FTSTU','ACTDTY','HONRDC','RTHLTH','MNHLTH','HIBPDX','CHDDX','ANGIDX',
-                                 'MIDX','OHRTDX','STRKDX','EMPHDX','CHBRON','CHOLDX','CANCERDX','DIABDX',
-                                 'JTPAIN','ARTHDX','ARTHTYPE','ASTHDX','ADHDADDX','PREGNT','WLKLIM',
-                                 'ACTLIM','SOCLIM','COGLIM','DFHEAR42','DFSEE42','ADSMOK42','PCS42',
-                                 'MCS42','K6SUM42','PHQ242','EMPST','POVCAT','INSCOV','UTILIZATION','PERWT15F'],
+                 categorical_features=[],
+                 features_to_keep=[],
                  features_to_drop=[],
                  na_values=[], custom_preprocessing=default_preprocessing,
                  metadata=default_mappings):

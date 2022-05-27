@@ -94,13 +94,13 @@ class StandardDataset(BinaryLabelDataset):
         # categorical_features = sorted(set(categorical_features) - set(features_to_drop),
         #                               key=df.columns.get_loc)
         #
-        # # 4. Remove any rows that have missing data.
-        dropped = df.dropna()
+        # # # 4. Remove any rows that have missing data.
+        # dropped = df.dropna()
         # count = df.shape[0] - dropped.shape[0]
         # if count > 0:
         #     warning("Missing Data: {} rows removed from {}.".format(count,
         #             type(self).__name__))
-        df = dropped
+        # df = dropped
 
         # 5. Create a one-hot encoding of the categorical variables.
         # df = pd.get_dummies(df, columns=categorical_features, prefix_sep='=')

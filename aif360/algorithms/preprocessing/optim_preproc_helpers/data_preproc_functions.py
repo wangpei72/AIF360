@@ -4,12 +4,15 @@ from aif360.datasets import AdultDataset, GermanDataset, \
 from aif360.datasets.helper_script.home_csv_helper import set_OneHotEncoder
 import pandas as pd
 import numpy as np
-from . import helper as hp
-from . import compas_helper as chp
-from . import bank_helper as bhp
-from . import heart_helper as hhp
-from . import student_helper as shp
-from . import default_credit_helper as dchp
+from .helpers import helper as hp
+from .helpers import compas_helper as chp
+from .helpers import bank_helper as bhp
+from .helpers import heart_helper as hhp
+from .helpers import student_helper as shp
+from .helpers import default_credit_helper as dchp
+from .helpers import meps_helper as m15hp
+from .helpers import h192_helper as m16hp
+
 
 def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=False, convert=True):
     def custom_preprocessing(df):
@@ -835,6 +838,221 @@ def load_preproc_data_student(protected_attributes=None):
                   'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
         custom_preprocessing=custom_preprocessing_new)
     return dataset_student
+
+def load_preproc_data_meps15(protected_attributes=None):
+    """
+    这个函数是我们自己定义的，由于原本只有MEPs19 20 21可以利用，但是我们时按照15 16进行划分的
+    所以这个函数表示加载的是h181 csv中的所有data
+    同理meps16函数表示加载的是h192 csv中的所有data
+    """
+    categorical_features = []
+    d_features_in_x = []
+    Y_features = ['UTILIZATION']
+    D_features = ['RACE']
+    features_to_keep = ['REGION', 'AGE', 'SEX', 'RACE', 'MARRY',
+                        'FTSTU', 'ACTDTY', 'HONRDC', 'RTHLTH', 'MNHLTH', 'HIBPDX', 'CHDDX', 'ANGIDX',
+                        'MIDX', 'OHRTDX', 'STRKDX', 'EMPHDX', 'CHBRON', 'CHOLDX', 'CANCERDX', 'DIABDX',
+                        'JTPAIN', 'ARTHDX', 'ARTHTYPE', 'ASTHDX', 'ADHDADDX', 'PREGNT', 'WLKLIM',
+                        'ACTLIM', 'SOCLIM', 'COGLIM', 'DFHEAR42', 'DFSEE42', 'ADSMOK42', 'PCS42',
+                        'MCS42', 'K6SUM42', 'PHQ242', 'EMPST', 'POVCAT', 'INSCOV', 'UTILIZATION', 'PERWT15F']
+    keep = (set(features_to_keep) | set(D_features) | set(Y_features))
+    all_privileged_classes = {'RACE': [1]}
+    all_protected_attribute_maps = {'RACE': {1: 'White', 0: 'Non-white'}}
+    label_maps = {1: '>= 10 visits', 0: '< 10 visits'}
+    def custom_preprocessing_new(df):
+        def race(row):
+            if ((row['HISPANX'] == 2) and (
+                    row['RACEV2X'] == 1)):  # non-Hispanic Whites are marked as WHITE; all others as NON-WHITE
+                return 'White'
+            return 'Non-White'
+
+        df['RACEV2X'] = df.apply(lambda row: race(row), axis=1)
+        df = df.rename(columns={'RACEV2X': 'RACE'})
+        df = df.rename(columns={'FTSTU53X': 'FTSTU', 'ACTDTY53': 'ACTDTY', 'HONRDC53': 'HONRDC', 'RTHLTH53': 'RTHLTH',
+                                'MNHLTH53': 'MNHLTH', 'CHBRON53': 'CHBRON', 'JTPAIN53': 'JTPAIN', 'PREGNT53': 'PREGNT',
+                                'WLKLIM53': 'WLKLIM', 'ACTLIM53': 'ACTLIM', 'SOCLIM53': 'SOCLIM', 'COGLIM53': 'COGLIM',
+                                'EMPST53': 'EMPST', 'REGION53': 'REGION', 'MARRY53X': 'MARRY', 'AGE53X': 'AGE',
+                                'POVCAT15': 'POVCAT',
+                                'INSCOV15': 'INSCOV'})  # for all other categorical features, remove values < -1
+
+        df = df[df['REGION'] >= 0]  # remove values -1
+        df = df[df['AGE'] >= 0]  # remove values -1
+        df = df[df['MARRY'] >= 0]  # remove values -1, -7, -8, -9
+        df = df[df['ASTHDX'] >= 0]  # remove values -1, -7, -8, -9
+        df = df[(df[['FTSTU', 'ACTDTY', 'HONRDC', 'RTHLTH', 'MNHLTH', 'HIBPDX', 'CHDDX', 'ANGIDX', 'EDUCYR', 'HIDEG',
+                     'MIDX', 'OHRTDX', 'STRKDX', 'EMPHDX', 'CHBRON', 'CHOLDX', 'CANCERDX', 'DIABDX',
+                     'JTPAIN', 'ARTHDX', 'ARTHTYPE', 'ASTHDX', 'ADHDADDX', 'PREGNT', 'WLKLIM',
+                     'ACTLIM', 'SOCLIM', 'COGLIM', 'DFHEAR42', 'DFSEE42', 'ADSMOK42',
+                     'PHQ242', 'EMPST', 'POVCAT', 'INSCOV']] >= -1).all(
+            1)]  # for all other categorical features, remove values < -1
+
+        def utilization(row):
+            return row['OBTOTV15'] + row['OPTOTV15'] + row['ERTOT15'] + row['IPNGTD15'] + row['HHTOTD15']
+
+        df['RACE'] = df['RACE'].replace({'White': 1, 'Non-White': 0})
+        df['TOTEXP15'] = df.apply(lambda row: utilization(row), axis=1)
+        lessE = df['TOTEXP15'] < 10.0
+        df.loc[lessE, 'TOTEXP15'] = 0
+        moreE = df['TOTEXP15'] >= 10.0
+        df.loc[moreE, 'TOTEXP15'] = 1
+        df = df.rename(columns={'TOTEXP15': 'UTILIZATION'})
+        df['SEX'] = df['SEX'].replace({1: 1, 2: 0})
+
+        subset_age = ['AGE31X', 'AGE42X', 'AGE53X', 'AGE15X', 'AGELAST', 'DOBMM', 'DOBYY']
+        subset_y = ['OBTOTV15', 'OPTOTV15', 'ERTOT15', 'IPNGTD15', 'HHTOTD15']
+        subset_race = ['RACEV1X', 'RACEV2X', 'RACEAX', 'RACEBX', 'RACEWX', 'RACETHX', 'HISPANX', 'HISPNCAT']
+        drop = ['AGE31X', 'AGE42X', 'AGE15X', 'AGELAST', 'DOBMM', 'DOBYY',  # AGE53X被选作AGE列，其余列drop
+                'OBTOTV15', 'OPTOTV15', 'ERTOT15', 'IPNGTD15', 'HHTOTD15',  # 这是计算Y的5个列，获得y之后drop
+                'RACEV1X', 'RACEAX', 'RACEBX', 'RACEWX', 'RACETHX', 'HISPANX', 'HISPNCAT',  # 判断race的列，获得了race之后drop
+                'DUID', 'PID', 'DUPERSID', 'PANEL', 'FAMID31',
+                'FAMID42', 'FAMID53', 'FAMID15', 'FAMIDYR', 'CPSFAMID',
+                'MOPID31X', 'MOPID42X', 'MOPID53X', 'DAPID31X', 'DAPID42X', 'DAPID53X', 'HIEUIDX'
+                # ID 个人特定标识的列，drop
+                ]
+        df.drop(drop, axis=1, inplace=True)
+
+
+        df = df[sorted(keep - set(drop), key=df.columns.get_loc)]
+        XD_features = df.columns
+        X_features = list(set(XD_features) - set(drop) - set(d_features_in_x))
+        age_div_10 = ['AGE']
+
+        norm_0_99, norm_0_9, years_cols, skip_cols_besides, str_cols = m15hp.classify_num_cols_before_workflow(
+            df, y_labels=Y_features, age_div_10=age_div_10, sex=['SEX'])
+        skip_feat = ['SEX', 'REGION', 'MARRY', 'ACTDTY', 'HONRDC', 'RTHLTH',
+                     'MNHLTH', 'ASTHDX', 'WLKLIM', 'ACTLIM', 'SOCLIM', 'DFHEAR42', 'DFSEE42',
+                     'POVCAT', 'INSCOV']
+        df = m15hp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10,
+                       skip_feat=list(set(skip_cols_besides) | set(skip_feat)), norm_0_99=norm_0_99,
+                       norm_0_9=norm_0_9, years_cols=years_cols)
+        hp.wrt_descrip_txt(df, 'meps15', Y_feat=Y_features, D_feat=D_features,
+                               Y_map=label_maps, D_map=all_protected_attribute_maps,
+                               P_map=all_privileged_classes)
+        return df
+
+    dataset_meps15 = MEPSDataset19(
+        label_name=Y_features[0],
+        favorable_classes=[1],
+        protected_attribute_names=[],
+        privileged_classes=[],
+        instance_weights_name=None,
+        categorical_features=categorical_features,
+        features_to_keep=features_to_keep,
+        metadata={'label_maps': [{1: '>= 10 visits', 0: '< 10 visits'}],
+                  'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
+        custom_preprocessing=custom_preprocessing_new)
+    return dataset_meps15
+
+
+def load_preproc_data_meps16(protected_attributes=None):
+    categorical_features = []
+    D_features = ['RACE']
+    Y_features = ['UTILIZATION']
+    features_to_keep = ['REGION', 'AGE', 'SEX', 'RACE', 'MARRY',
+                        'FTSTU', 'ACTDTY', 'HONRDC', 'RTHLTH', 'MNHLTH', 'HIBPDX', 'CHDDX', 'ANGIDX',
+                        'MIDX', 'OHRTDX', 'STRKDX', 'EMPHDX', 'CHBRON', 'CHOLDX', 'CANCERDX', 'DIABDX',
+                        'JTPAIN', 'ARTHDX', 'ARTHTYPE', 'ASTHDX', 'ADHDADDX', 'PREGNT', 'WLKLIM',
+                        'ACTLIM', 'SOCLIM', 'COGLIM', 'DFHEAR42', 'DFSEE42', 'ADSMOK42',
+                        'PCS42',
+                        'MCS42', 'K6SUM42', 'PHQ242', 'EMPST', 'POVCAT', 'INSCOV', 'UTILIZATION', 'PERWT16F']
+    keep = (set(features_to_keep) | set(D_features) | set(Y_features))
+    all_privileged_classes = {'RACE': [1]}
+    all_protected_attribute_maps = {'RACE': {1: 'White', 0: 'Non-white'}}
+    label_maps = {1: '>= 10 Visits', 0: '< 10 Visits'}
+    def custom_preprocessing_new(df):
+        def race(row):
+            if ((row['HISPANX'] == 2) and (
+                    row['RACEV2X'] == 1)):  # non-Hispanic Whites are marked as WHITE; all others as NON-WHITE
+                return 'White'
+            return 'Non-White'
+
+        df['RACEV2X'] = df.apply(lambda row: race(row), axis=1)
+        df = df.rename(columns={'RACEV2X': 'RACE'})
+        df = df.rename(columns={'FTSTU53X': 'FTSTU', 'ACTDTY53': 'ACTDTY', 'HONRDC53': 'HONRDC', 'RTHLTH53': 'RTHLTH',
+                                'MNHLTH53': 'MNHLTH', 'CHBRON53': 'CHBRON', 'JTPAIN53': 'JTPAIN', 'PREGNT53': 'PREGNT',
+                                'WLKLIM53': 'WLKLIM', 'ACTLIM53': 'ACTLIM', 'SOCLIM53': 'SOCLIM', 'COGLIM53': 'COGLIM',
+                                'EMPST53': 'EMPST', 'REGION53': 'REGION', 'MARRY53X': 'MARRY', 'AGE53X': 'AGE',
+                                'POVCAT16': 'POVCAT',
+                                'INSCOV16': 'INSCOV'})  # for all other categorical features, remove values < -1
+
+        df = df[df['REGION'] >= 0]  # remove values -1
+        df = df[df['AGE'] >= 0]  # remove values -1
+        df = df[df['MARRY'] >= 0]  # remove values -1, -7, -8, -9
+        df = df[df['ASTHDX'] >= 0]  # remove values -1, -7, -8, -9
+        df = df[(df[['FTSTU', 'ACTDTY', 'HONRDC', 'RTHLTH', 'MNHLTH', 'HIBPDX', 'CHDDX', 'ANGIDX', 'EDUCYR', 'HIDEG',
+                     'MIDX', 'OHRTDX', 'STRKDX', 'EMPHDX', 'CHBRON', 'CHOLDX', 'CANCERDX', 'DIABDX',
+                     'JTPAIN', 'ARTHDX', 'ARTHTYPE', 'ASTHDX', 'ADHDADDX', 'PREGNT', 'WLKLIM',
+                     'ACTLIM', 'SOCLIM', 'COGLIM', 'DFHEAR42', 'DFSEE42', 'ADSMOK42',
+                     'PHQ242', 'EMPST', 'POVCAT', 'INSCOV']] >= -1).all(
+            1)]  # for all other categorical features, remove values < -1
+
+        def utilization(row):
+            return row['OBTOTV16'] + row['OPTOTV16'] + row['ERTOT16'] + row['IPNGTD16'] + row['HHTOTD16']
+
+        df['TOTEXP16'] = df.apply(lambda row: utilization(row), axis=1)
+        lessE = df['TOTEXP16'] < 10.0
+        df.loc[lessE, 'TOTEXP16'] = 0.0
+        moreE = df['TOTEXP16'] >= 10.0
+        df.loc[moreE, 'TOTEXP16'] = 1.0
+
+        df = df.rename(columns={'TOTEXP16': 'UTILIZATION'})
+
+        df['RACE'] = df['RACE'].replace({'White': 1, 'Non-White': 0})
+        df['SEX'] = df['SEX'].replace({1: 1, 2: 0})
+
+        subset_age = ['AGE31X', 'AGE42X', 'AGE53X', 'AGE16X', 'AGELAST', 'DOBMM', 'DOBYY']
+        subset_y = ['OBTOTV16', 'OPTOTV16', 'ERTOT16', 'IPNGTD16', 'HHTOTD16']
+        subset_race = ['RACEV1X', 'RACEV2X', 'RACEAX', 'RACEBX', 'RACEWX', 'RACETHX', 'HISPANX', 'HISPNCAT']
+        drop = ['AGE31X', 'AGE42X', 'AGE16X', 'AGELAST', 'DOBMM', 'DOBYY',  # AGE53X被选作AGE列，其余列drop
+                'OBTOTV16', 'OPTOTV16', 'ERTOT16', 'IPNGTD16', 'HHTOTD16',  # 这是计算Y的5个列，获得y之后drop
+                'RACEV1X', 'RACEAX', 'RACEBX', 'RACEWX', 'RACETHX', 'HISPANX', 'HISPNCAT',  # 判断race的列，获得了race之后drop
+                'DUID', 'PID', 'DUPERSID', 'PANEL', 'FAMID31',
+                'FAMID42', 'FAMID53', 'FAMID16', 'FAMIDYR', 'CPSFAMID',
+                'MOPID31X', 'MOPID42X', 'MOPID53X', 'DAPID31X', 'DAPID42X', 'DAPID53X', 'HIEUIDX'
+                # ID 个人特定标识的列，drop
+                ]
+
+        df.drop(drop, axis=1, inplace=True)
+        d_features_in_x = []
+
+        # features_to_keep = features_to_keep or df.columns.tolist()
+
+        df = df[sorted(keep - set(drop), key=df.columns.get_loc)]
+
+        XD_features = df.columns
+        X_features = list(set(XD_features) - set(drop) - set(d_features_in_x))
+
+        age_div_10 = ['AGE']
+
+        norm_0_99, norm_0_9, years_cols, skip_cols_besides, str_cols = m16hp.classify_num_cols_before_workflow(
+            df, y_labels=Y_features, age_div_10=age_div_10, sex=['SEX'])
+        skip_feat = ['SEX', 'REGION', 'MARRY', 'ACTDTY', 'HONRDC', 'RTHLTH',
+                     'MNHLTH', 'ASTHDX', 'WLKLIM', 'ACTLIM', 'SOCLIM', 'DFHEAR42', 'DFSEE42',
+                     'POVCAT', 'INSCOV']
+
+        df = m16hp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10,
+                             skip_feat=set(skip_cols_besides) | set(skip_feat), norm_0_99=norm_0_99,
+                             norm_0_9=norm_0_9, years_cols=years_cols)
+        df.to_csv('df_keep_as_360_preproc_meps16_192.csv')
+        hp.wrt_descrip_txt(df, 'meps16', Y_feat=Y_features, D_feat=D_features,
+                           Y_map=label_maps, D_map=all_protected_attribute_maps,
+                           P_map=all_privileged_classes)
+        return df
+    # 计算之前需要替换
+    #       protected_attribute_names=[],
+    #         privileged_classes=[],
+    dataset_meps16 = MEPSDataset21(
+        label_name=Y_features[0],
+        favorable_classes=[1],
+        protected_attribute_names=[],
+        privileged_classes=[],
+        instance_weights_name=None,
+        categorical_features=categorical_features,
+        features_to_keep=features_to_keep,
+        metadata={'label_maps': [{1: '>= 10 visits', 0: '< 10 visits'}],
+                  'protected_attribute_maps': [all_protected_attribute_maps[x] for x in D_features]},
+        custom_preprocessing=custom_preprocessing_new)
+    return dataset_meps16
 
 def load_preproc_data_meps19(protected_attributes=None):
     dataset_meps19 = MEPSDataset19()
