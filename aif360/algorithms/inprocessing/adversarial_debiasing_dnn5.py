@@ -35,8 +35,8 @@ class AdversarialDebiasingDnn5(Transformer):
                  debias=True,
                  save = True,
                  convert = True,
-                 origmodel_path='../org-model/adult/999/test.model',
-                 debiasmodel_path='../adebias-model/adult/999/test.model'):
+                 dataset_d_name='adult_race',
+                 ):
         super(AdversarialDebiasingDnn5, self).__init__(
             unprivileged_groups=unprivileged_groups,
             privileged_groups=privileged_groups)
@@ -58,8 +58,9 @@ class AdversarialDebiasingDnn5(Transformer):
         self.debias = debias
         self.save = save
         self.convert = convert
-        self.orig_model_path = origmodel_path
-        self.adebias_model_path = debiasmodel_path
+        self.dataset_d_name = dataset_d_name
+        self.orig_model_path = '../../../org-model/' + dataset_d_name + '/' + str(self.num_epochs - 1) + '/test.model'
+        self.adebias_model_path = '../../../adebias-model/' + dataset_d_name + '/' + str(self.num_epochs - 1) + '/test.model'
 
 
         self.features_dim = None
@@ -121,7 +122,7 @@ class AdversarialDebiasingDnn5(Transformer):
     def save_model(self, train_dir, filename):
         if self.save:
             train_dir = os.path.join(train_dir, str(self.num_epochs - 1))
-            if not os._exists(train_dir):
+            if not os.path.exists(train_dir):
                 os.makedirs(train_dir)
             save_path = os.path.join(train_dir, filename)
             saver = tf.train.Saver()
@@ -291,11 +292,11 @@ class AdversarialDebiasingDnn5(Transformer):
                             epoch, i, pred_labels_loss_value))
             if self.save:
                 if self.debias:
-                    self.save_model('../adebias-model-fixnc/adult/', 'test.model')
-                    self.adebias_model_path = '../adebias-model-fixnc/adult/' + str(self.num_epochs - 1) + '/test.model'
+                    self.save_model('../../../adebias-model/'+ self.dataset_d_name  + '/', 'test.model')
+                    self.adebias_model_path = '../../../adebias-model/' +self.dataset_d_name + '/' + str(self.num_epochs - 1) + '/test.model'
                 else:
-                    self.save_model('../org-model-fixnc/adult/', 'test.model')
-                    self.orig_model_path = '../org-model-fixnc/adult/' + str(self.num_epochs - 1) + '/test.model'
+                    self.save_model('../../../org-model/' + self.dataset_d_name + '/', 'test.model')
+                    self.orig_model_path = '../../../org-model/'+ self.dataset_d_name + '/' + str(self.num_epochs - 1) + '/test.model'
         return self
 
     def my_normalize(self, x):

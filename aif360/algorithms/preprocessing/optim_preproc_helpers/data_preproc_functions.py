@@ -15,66 +15,25 @@ from .helpers import h192_helper as m16hp
 
 
 def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=False, convert=True):
-    def custom_preprocessing(df):
-        """The custom pre-processing function is adapted from
-            https://github.com/fair-preprocessing/nips2017/blob/master/Adult/code/Generate_Adult_Data.ipynb
-            If sub_samp != False, then return smaller version of dataset truncated to tiny_test data points.
-        """
-
-        # Group age by decade
-        df['Age (decade)'] = df['age'].apply(lambda x: x//10*10)
-        # df['Age (decade)'] = df['age'].apply(lambda x: np.floor(x/10.0)*10.0)
-
-        def group_edu(x):
-            if x <= 5:
-                return '<6'
-            elif x >= 13:
-                return '>12'
-            else:
-                return x
-
-        def age_cut(x):
-            if x >= 70:
-                return '>=70'
-            else:
-                return x
-
-        def group_race(x):
-            if x == "White":
-                return 1.0
-            else:
-                return 0.0
-
-        # Cluster education and age attributes.
-        # Limit education range
-        df['Education Years'] = df['education-num'].apply(lambda x: group_edu(x))
-        df['Education Years'] = df['Education Years'].astype('category')
-
-        # Limit age range
-        df['Age (decade)'] = df['Age (decade)'].apply(lambda x: age_cut(x))
-
-        # Rename income variable
-        df['Income Binary'] = df['income-per-year']
-        df['Income Binary'] = df['Income Binary'].replace(to_replace='>50K.', value='>50K', regex=True)
-        df['Income Binary'] = df['Income Binary'].replace(to_replace='<=50K.', value='<=50K', regex=True)
-
-        # Recode sex and race
-        df['sex'] = df['sex'].replace({'Female': 0.0, 'Male': 1.0})
-        df['race'] = df['race'].apply(lambda x: group_race(x))
-
-        if sub_samp and not balance:
-            df = df.sample(sub_samp)
-        if sub_samp and balance:
-            df_0 = df[df['Income Binary'] == '<=50K']
-            df_1 = df[df['Income Binary'] == '>50K']
-            df_0 = df_0.sample(int(sub_samp/2))
-            df_1 = df_1.sample(int(sub_samp/2))
-            df = pd.concat([df_0, df_1])
-        return df
-
     Y_features = ['income-per-year']
     skip_feat = ['sex', 'race', 'education-num']
-    label_maps= {1: '>50K', 0: '<=50K'}
+    label_maps = {1: '>50K', 0: '<=50K'}
+    XD_features = ['age', 'workclass', 'fnlwgt', 'education', 'education-num', 'marital-status',
+                   'occupation', 'relationship', 'race', 'sex', 'capital-gain',
+                   'capital-loss', 'hours-per-week', 'native-country']
+    D_features = ['sex', 'race'] if protected_attributes is None else protected_attributes
+    # Y_features = ['income-per-year']
+    X_features = list(set(XD_features) - set(D_features))
+    categorical_features = []
+
+    # privileged classes
+    all_privileged_classes = {'sex': [1],
+                              "race": [1]}
+
+    # protected attribute maps
+    all_protected_attribute_maps = {'sex': {1: 'Male', 0: 'Female'},
+                                    "race": {1: 'White', 0: 'Non-white'}}
+    features_to_keep = list(set(XD_features) | set(Y_features))
     def custom_preprocessing_new(df):
         # 1先找到标签 Y_features 转换成二分的，可能有些str要replace
         df['income-per-year'] = df['income-per-year'].replace(to_replace='>50K.', value='>50K', regex=True)
@@ -84,35 +43,21 @@ def load_preproc_data_adult(protected_attributes=None, sub_samp=False, balance=F
         df['sex'] = df['sex'].replace({'Female': 0, 'Male': 1})
         df['race'] = df['race'].apply(lambda x: np.int(x == "White"))
         df['income-per-year'] = df['income-per-year'].apply(lambda x: np.int(x == '>50K'))
+        df = df[sorted(features_to_keep, key=df.columns.get_loc)]
         # 3逐一观察numric的列，如果是小的无规则的列归一化为1-9;大的1-99;较为离散的二分成0-1
         #  str类型不用管，会自动编码成数字
         df = hp.work_flow(df, Y_features, skip_feat=skip_feat,
                           binary_0_feat=['capital-gain', 'capital-loss'], age_feat='age')
-        hp.wrt_descrip_txt(df, 'adult', Y_feat=Y_features, D_feat=D_features,
-                           Y_map=label_maps, D_map=all_protected_attribute_maps,P_map=all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'adult', Y_feat=Y_features, D_feat=D_features,
+        #                    Y_map=label_maps, D_map=all_protected_attribute_maps,P_map=all_privileged_classes)
         return df
-    XD_features = ['age','workclass','fnlwgt','education','education-num','marital-status',
-                   'occupation','relationship','race','personal_status','capital-gain',
-                   'capital-loss','hours-per-week','native-country']
-    D_features = ['personal_status', 'race'] if protected_attributes is None else protected_attributes
-    # Y_features = ['income-per-year']
-    X_features = list(set(XD_features)-set(D_features))
-    categorical_features = []
 
-    # privileged classes
-    all_privileged_classes = {'personal_status': [1],
-                              "race": [1]}
 
-    # protected attribute maps
-    all_protected_attribute_maps = {'personal_status': {1: 'Male', 0: 'Female'},
-                                    "race": {1: 'White', 0: 'Non-white'}}
-    #  protected_attribute_names=D_features,
-    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
     dataset_adult = AdultDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -238,7 +183,7 @@ def load_preproc_data_compas(protected_attributes=None):
             'r_offense_date', 'violent_recid', 'vr_case_number',
             'vr_charge_degree', 'vr_offense_date', 'vr_charge_desc', 'screening_date',
             'v_screening_date', 'v_type_of_assessment', 'type_of_assessment', 'priors_count.1', 'decile_score.1']
-    D_features = ['sex', 'race']
+    D_features = ['sex', 'race'] if protected_attributes is None else protected_attributes
     X_features = list(set(XD_features) - set(drop) - set(D_features))
     Y_features = ['two_year_recid']  # 优势为label ： 0
     all_privileged_classes = {"sex": [1],
@@ -296,15 +241,15 @@ def load_preproc_data_compas(protected_attributes=None):
                        norm_0_99=norm_0_99, norm_0_9=norm_0_9, days=newly_added_days_feat, c_days_from_compas=c_days,
                        days_b_screening_arrest=days_b)
         # df.to_csv('df_compas.csv')
-        hp.wrt_descrip_txt(df, 'compas', Y_feat=Y_features, D_feat=D_features, Y_map=label_maps
-                               , D_map=all_protected_attribute_maps, P_map=all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'compas', Y_feat=Y_features, D_feat=D_features, Y_map=label_maps
+        #                        , D_map=all_protected_attribute_maps, P_map=all_privileged_classes)
         return df
     # 被清零的privileged_classes [all_privileged_classes[x] for x in D_features]
     return CompasDataset(
         label_name=Y_features[0],
         favorable_classes=[0],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -415,14 +360,14 @@ def load_preproc_data_german(protected_attributes=None):
         df = hp.work_flow(df, y_labels=Y_features, skip_feat=skip_feat, age_div_10=age_div_10,
                           norm_1_99=norm_1_99
                           )
-        hp.wrt_descrip_txt(df, 'german', Y_features, D_features, label_maps, all_protected_attribute_maps, all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'german', Y_features, D_features, label_maps, all_protected_attribute_maps, all_privileged_classes)
         return df
     # TODO 进行numpy导出的时候，不做pri的lambda防止数据被更改为0-1的
     return GermanDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -550,7 +495,7 @@ def load_preproc_data_bank(protected_attributes=None):
                        'campaign', 'pdays', 'previous',
                        'poutcome']
     drop = []
-    D_features = ['age']
+    D_features = ['age'] if protected_attributes is None else protected_attributes
     Y_features = ['y']
     X_features = list(set(XD_features) - set(drop) - set(D_features))
     categorical_features = ['job', 'marital', 'Education Years',
@@ -558,7 +503,7 @@ def load_preproc_data_bank(protected_attributes=None):
                                 'poutcome']
 
     # privileged classes 优势类别
-    all_privileged_classes = {"age": [1.0]}
+    all_privileged_classes = {"age": [3, 4, 5,6,7,8]}
 
     # 敏感属性映射
     all_protected_attribute_maps = {'age': {1.0: 'Old', 0.0: 'Young'}}
@@ -566,7 +511,6 @@ def load_preproc_data_bank(protected_attributes=None):
     r_y_map = {'yes': 1, 'no': 0}
 
     def custom_preprocessing_new(df):
-        # df = pd.read_csv('../../../data/raw/bank/bank-additional.csv', sep=';', na_values="unknown")
         # 1 dropna不用特地做
         # 2 敏感属性优劣势处理 标签优劣势处理 特判的列表例如age
         age_div_10 = ['age']
@@ -583,18 +527,17 @@ def load_preproc_data_bank(protected_attributes=None):
 
         df = bhp.work_flow(df, y_labels=Y_features, int_cas=int_cas, age_div_10=age_div_10, bin_0=bin_0,
                        bin_4_5=bin_4_5, bin_93=bin_93, bin_999=bin_999)
-        hp.wrt_descrip_txt(df, 'bank', Y_feat=Y_features, D_feat=D_features,
-                               Y_map=label_maps, D_map=all_protected_attribute_maps,
-                               P_map=all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'bank', Y_feat=Y_features, D_feat=D_features,
+        #                        Y_map=label_maps, D_map=all_protected_attribute_maps,
+        #                        P_map=all_privileged_classes)
         return df
     # 为了防止奇怪行为，导出npy时候这两个参数被删掉了
-    # protected_attribute_names=D_features,
-    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
+    # 在整理对抗去偏的时候又重新添加回来
     dataset_bank = BankDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -630,8 +573,6 @@ def load_preproc_data_default(protected_attributes=None):
 
         return df
     def custom_preprocessing_new(df):
-        # df = pd.read_csv('../../../data/raw/default/default_of_credit_card_clients.csv', sep=',', header=[0],
-        #                  skiprows=[1])
         df.drop('Unnamed: 0', axis=1, inplace=True)
         df['Y'] = df['Y'].replace({'yes': 1, 'no': 0})
         df['X2'] = df['X2'].replace({1: 1, 2: 0})
@@ -645,9 +586,9 @@ def load_preproc_data_default(protected_attributes=None):
         df = dchp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10,
                        skip_feat=skip_feat, norm_0_99=norm_0_99,
                        norm_99_99=norm_99_99, norm_1_99=norm_1_99)
-        hp.wrt_descrip_txt(df, 'default', Y_feat=Y_features, D_feat=D_features,
-                               Y_map=label_maps, D_map=all_protected_attribute_maps,
-                               P_map=all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'default', Y_feat=Y_features, D_feat=D_features,
+        #                        Y_map=label_maps, D_map=all_protected_attribute_maps,
+        #                        P_map=all_privileged_classes)
         return df
 
     XD_features = ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10'
@@ -655,23 +596,20 @@ def load_preproc_data_default(protected_attributes=None):
         , 'X21', 'X22', 'X23']
     drop = []
     d_features_in_x = ['X2']
-    D_features = ['sex']
+    D_features = ['X2'] if protected_attributes is None else protected_attributes
     X_features = list(set(XD_features) - set(drop) - set(d_features_in_x))
     Y_features = ['Y']
 
-    all_privileged_classes = {'sex': [1]}
+    all_privileged_classes = {'X2': [1]}
     all_protected_attribute_maps = {'X2': {1: 'Male', 0: 'Female'}}
     label_maps = {1: 'yes', 0: 'no'}
     categorical_features = []
 
-
-    # protected_attribute_names=D_features,
-    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
     dataset_default = DefaultCreditDataset(
         label_name=Y_features[0],
         favorable_classes=[0],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+d_features_in_x,
@@ -696,12 +634,13 @@ def load_preproc_data_heart(protected_attributes=None):
         , 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'slope'
         , 'ca', 'thal']
     drop = []
-    D_features = ['age']
+    D_features = ['age'] if protected_attributes is None else protected_attributes
     X_features = list(set(XD_features) - set(drop) - set(D_features))
 
     Y_features = ['Probability']
-    all_privileged_classes = {"age": [1]}
-    all_protected_attribute_maps = {'age': {1: 'Old', 0: 'Young'}}
+    all_privileged_classes = {"age": [2, 3]}
+    #  TODO 注意heart中年龄大的是弱势群体
+    all_protected_attribute_maps = {'age': {1: 'Young', 0: 'Old'}}
     label_maps = {1: 'absence', 0: 'presence'}
     def custom_preprocessing_new(df):
 
@@ -720,9 +659,9 @@ def load_preproc_data_heart(protected_attributes=None):
 
         df = hhp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10, skip_feat=skip_feat,
                        norm_0_9=norm_0_9)
-        hp.wrt_descrip_txt(df, 'heart', Y_feat=Y_features, D_feat=D_features,
-                               Y_map=label_maps, D_map=all_protected_attribute_maps,
-                               P_map=all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'heart', Y_feat=Y_features, D_feat=D_features,
+        #                        Y_map=label_maps, D_map=all_protected_attribute_maps,
+        #                        P_map=all_privileged_classes)
         return df
 
     categorical_features = []
@@ -730,16 +669,12 @@ def load_preproc_data_heart(protected_attributes=None):
     # pri classes 年轻的人患病可能性较小 属于优势群体 因此上面的lambda表达式给的也是小于号
     # 同时 prob为0 表示没有患病可能的属于优势
 
-
     # protected attr maps
-
-    # protected_attribute_names=D_features,
-    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
     dataset_heart = HeartDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -800,7 +735,7 @@ def load_preproc_data_student(protected_attributes=None):
         , 'internet', 'romantic', 'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences', 'G1'
         , 'G2']
     drop = []
-    D_features = ['sex']
+    D_features = ['sex'] if protected_attributes is None else protected_attributes
     X_features = list(set(XD_features) - set(drop) - set(D_features))
     Y_features = ['Probability']
 
@@ -820,17 +755,16 @@ def load_preproc_data_student(protected_attributes=None):
                      'famrel', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences', 'G1', 'G2']
 
         df = shp.work_flow(df, y_labels=Y_features, skip_feat=skip_feat)
-        hp.wrt_descrip_txt(df, 'student', Y_feat=Y_features, D_feat=D_features,
-                               Y_map=label_maps, D_map=all_protected_attribute_maps,
-                               P_map=all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'student', Y_feat=Y_features, D_feat=D_features,
+        #                        Y_map=label_maps, D_map=all_protected_attribute_maps,
+        #                        P_map=all_privileged_classes)
         return df
-    #     protected_attribute_names=D_features,
-    #         privileged_classes=[all_privileged_classes[x] for x in D_features],
+
     dataset_student = StudentDataset(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=X_features+Y_features+D_features,
@@ -848,7 +782,7 @@ def load_preproc_data_meps15(protected_attributes=None):
     categorical_features = []
     d_features_in_x = []
     Y_features = ['UTILIZATION']
-    D_features = ['RACE']
+    D_features = ['RACE'] if protected_attributes is None else protected_attributes
     features_to_keep = ['REGION', 'AGE', 'SEX', 'RACE', 'MARRY',
                         'FTSTU', 'ACTDTY', 'HONRDC', 'RTHLTH', 'MNHLTH', 'HIBPDX', 'CHDDX', 'ANGIDX',
                         'MIDX', 'OHRTDX', 'STRKDX', 'EMPHDX', 'CHBRON', 'CHOLDX', 'CANCERDX', 'DIABDX',
@@ -925,16 +859,16 @@ def load_preproc_data_meps15(protected_attributes=None):
         df = m15hp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10,
                        skip_feat=list(set(skip_cols_besides) | set(skip_feat)), norm_0_99=norm_0_99,
                        norm_0_9=norm_0_9, years_cols=years_cols)
-        hp.wrt_descrip_txt(df, 'meps15', Y_feat=Y_features, D_feat=D_features,
-                               Y_map=label_maps, D_map=all_protected_attribute_maps,
-                               P_map=all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'meps15', Y_feat=Y_features, D_feat=D_features,
+        #                        Y_map=label_maps, D_map=all_protected_attribute_maps,
+        #                        P_map=all_privileged_classes)
         return df
 
     dataset_meps15 = MEPSDataset19(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=features_to_keep,
@@ -946,7 +880,7 @@ def load_preproc_data_meps15(protected_attributes=None):
 
 def load_preproc_data_meps16(protected_attributes=None):
     categorical_features = []
-    D_features = ['RACE']
+    D_features = ['RACE'] if protected_attributes is None else protected_attributes
     Y_features = ['UTILIZATION']
     features_to_keep = ['REGION', 'AGE', 'SEX', 'RACE', 'MARRY',
                         'FTSTU', 'ACTDTY', 'HONRDC', 'RTHLTH', 'MNHLTH', 'HIBPDX', 'CHDDX', 'ANGIDX',
@@ -1033,10 +967,9 @@ def load_preproc_data_meps16(protected_attributes=None):
         df = m16hp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10,
                              skip_feat=set(skip_cols_besides) | set(skip_feat), norm_0_99=norm_0_99,
                              norm_0_9=norm_0_9, years_cols=years_cols)
-        df.to_csv('df_keep_as_360_preproc_meps16_192.csv')
-        hp.wrt_descrip_txt(df, 'meps16', Y_feat=Y_features, D_feat=D_features,
-                           Y_map=label_maps, D_map=all_protected_attribute_maps,
-                           P_map=all_privileged_classes)
+        # hp.wrt_descrip_txt(df, 'meps16', Y_feat=Y_features, D_feat=D_features,
+        #                    Y_map=label_maps, D_map=all_protected_attribute_maps,
+        #                    P_map=all_privileged_classes)
         return df
     # 计算之前需要替换
     #       protected_attribute_names=[],
@@ -1044,8 +977,8 @@ def load_preproc_data_meps16(protected_attributes=None):
     dataset_meps16 = MEPSDataset21(
         label_name=Y_features[0],
         favorable_classes=[1],
-        protected_attribute_names=[],
-        privileged_classes=[],
+        protected_attribute_names=D_features,
+        privileged_classes=[all_privileged_classes[x] for x in D_features],
         instance_weights_name=None,
         categorical_features=categorical_features,
         features_to_keep=features_to_keep,
@@ -1054,18 +987,53 @@ def load_preproc_data_meps16(protected_attributes=None):
         custom_preprocessing=custom_preprocessing_new)
     return dataset_meps16
 
-def load_preproc_data_meps19(protected_attributes=None):
-    dataset_meps19 = MEPSDataset19()
-    return dataset_meps19
+def load_preproc_data(dataset_d_name, protected_attributes=None):
+    if dataset_d_name == 'adult_race':
+        dataset_adult_race = load_preproc_data_adult(protected_attributes=['race'])
+        return dataset_adult_race
+    elif dataset_d_name == 'adult_sex':
+        dataset_adult_sex = load_preproc_data_adult(protected_attributes=['sex'])
+        return dataset_adult_sex
+    elif dataset_d_name == 'compas_race':
+        dataset_compas_race = load_preproc_data_compas(protected_attributes=['race'])
+        return dataset_compas_race
+    elif dataset_d_name == 'compas_sex':
+        dataset_compas_sex = load_preproc_data_compas(protected_attributes=['sex'])
+        return dataset_compas_sex
+    elif dataset_d_name == 'german_sex':
+        dataset_german_sex = load_preproc_data_german(protected_attributes=['personal_status'])
+        return dataset_german_sex
+    elif dataset_d_name == 'bank_age':
+        dataset_bank_age = load_preproc_data_bank(protected_attributes=['age'])
+        return dataset_bank_age
+    elif dataset_d_name == 'default_sex':
+        dataset_default_sex = load_preproc_data_default(protected_attributes=['X2'])
+        return dataset_default_sex
+    elif dataset_d_name == 'heart_age':
+        dataset_heart_age = load_preproc_data_heart(protected_attributes=['age'])
+        return dataset_heart_age
+    elif dataset_d_name == 'student_sex':
+        dataset_student_sex = load_preproc_data_student(protected_attributes=['sex'])
+        return dataset_student_sex
+    elif dataset_d_name == 'meps15_race':
+        dataset_meps15_race = load_preproc_data_meps15(protected_attributes=['RACE'])
+        return dataset_meps15_race
+    elif dataset_d_name == 'meps16_race':
+        dataset_meps16_race = load_preproc_data_meps16(protected_attributes=['RACE'])
+        return dataset_meps16_race
 
-def load_preproc_data_meps20(protected_attributes=None):
-    dataset_meps20 = MEPSDataset20()
-    return dataset_meps20
+dataset_with_d_attr_list = ['adult_race', 'adult_sex',
+                            'compas_race', 'compas_sex',
+                            'german_sex',
+                            'bank_age',
+                            'default_sex',
+                            'heart_age',
+                            'student_sex',
+                            'meps15_race',
+                            'meps16_race']
 
-def load_preproc_data_meps21(protected_attributes=None):
-    dataset_meps21 = MEPSDataset21()
-    return dataset_meps21
-
+def dataset_with_d_name_list():
+    return dataset_with_d_attr_list
 def load_preproc_data_home_credit(protected_attributes=None):
     def custom_preprocessing(df):
         df = df.rename(columns = {'CODE_GENDER' : 'sex'})

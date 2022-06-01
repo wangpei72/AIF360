@@ -1,0 +1,1 @@
+favorable_classes(Y_map),1,protected_attribute_name(D_map),sex,privileged_protected_attributes(P_map),0,unprivileged_protected_attributes(UP_map),1

@@ -3,7 +3,7 @@ import sys
 sys.path.append("../")
 import numpy as np
 import pandas as pd
-import get_attr_header as attr
+from . import attr_map_helper as attr
 
 data_set_list = ['adult', 'compas', 'german', 'bank',
                  'default', 'heart', 'student',
@@ -13,6 +13,9 @@ data_set_list = ['adult', 'compas', 'german', 'bank',
 def get_df_from_npy_x_y(x, y, dataset_name='adult'):
     idx_in_set_list = data_set_list.index(dataset_name)
     cols = attr.get_all_attr_list()[idx_in_set_list]
+    if len(y.shape) == 1:
+        y = y[:, np.newaxis]
+        assert len(x.shape) == len(y.shape)
     concanate = np.concatenate((x, y), axis=1)
     df = pd.DataFrame(concanate, columns=cols)
     return df

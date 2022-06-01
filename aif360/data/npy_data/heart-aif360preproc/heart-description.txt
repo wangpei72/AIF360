@@ -10,4 +10,4 @@ Labels is : Probability
 Protected attrs : age 
 Meta-data :
 label_map : {1: 'absence', 0: 'presence'}
-all_protected_attribute_maps : {'age': {1: 'Old', 0: 'Young'}}
+all_protected_attribute_maps = {'age': {1: 'Young', 0: 'Old'}}

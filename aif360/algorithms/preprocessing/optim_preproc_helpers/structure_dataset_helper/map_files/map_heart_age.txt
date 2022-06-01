@@ -1,0 +1,1 @@
+favorable_classes(Y_map),1,protected_attribute_name(D_map),age,privileged_protected_attributes(P_map),lambda x: x < 3,unprivileged_protected_attributes(UP_map),lambda x: x >= 3

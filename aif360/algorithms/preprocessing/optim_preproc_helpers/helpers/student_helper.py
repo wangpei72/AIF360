@@ -4,7 +4,7 @@ import os
 import re
 import pandas as pd
 
-from aif360.algorithms.preprocessing.optim_preproc_helpers import helper
+from . import helper
 
 sys.path.append("../")
 from sklearn.feature_extraction.text import CountVectorizer

@@ -20,6 +20,7 @@ if __name__ == '__main__':
     all_privileged_classes = {'sex': [1],
                               "race": [1]}
     D_features = ['sex', 'race']
+    df_adult = all_df[data_set_list.index('adult')]
     # test_set_adult = StructuredDataset(
     #                 df=df_adult,
     #                 label_names=['income-per-year'],
@@ -32,23 +33,25 @@ if __name__ == '__main__':
     #               'protected_attribute_maps': [all_protected_attribute_maps[x]
     #                             for x in D_features]})
     #
-    # bin_test_set = BinaryLabelDataset(favorable_label=1, unfavorable_label=0,
-    #                                   df=df_adult,
-    #                                   label_names=['income-per-year'],
-    #                                   protected_attribute_names=['sex', 'race'],
-    #                                   instance_weights_name=None,
-    #                                   scores_names=[],  # 未来需要将predict用作score
-    #                                   unprivileged_protected_attributes=[[0], [0]],
-    #                                   privileged_protected_attributes=[[1], [1]],
-    #                                   metadata={'label_maps': [{1: '>50K', 0: '<=50K'}],
-    #                                             'protected_attribute_maps': [all_protected_attribute_maps[x]
-    #                                                                          for x in D_features]}
-    #                                   )
-    # p = [{'sex': 1}]
-    # u = [{'sex': 0}]
-    # dm = BinaryLabelDatasetMetric(bin_test_set, unprivileged_groups=u,
-    #                    privileged_groups=p)
-    #
-    # print('Test set: Difference in mean outcomes between unprivileged and privileged groups = %f' %
-    #       dm.mean_difference())
+    bin_test_set = BinaryLabelDataset(favorable_label=1, unfavorable_label=0,
+                                      df=df_adult,
+                                      label_names=['income-per-year'],
+                                      protected_attribute_names=['sex', 'race'],
+                                      instance_weights_name=None,
+                                      scores_names=[],  # 未来需要将predict用作score
+                                      unprivileged_protected_attributes=[[0], [0]],
+                                      privileged_protected_attributes=[[1], [1]],
+                                      metadata={'label_maps': [{1: '>50K', 0: '<=50K'}],
+                                                'protected_attribute_maps': [all_protected_attribute_maps[x]
+                                                                             for x in D_features]}
+                                      )
+    p = [{'sex': 1}]
+    u = [{'sex': 0}]
+    dm = BinaryLabelDatasetMetric(bin_test_set, unprivileged_groups=u,
+                       privileged_groups=p)
+
+    print('Test set: Difference in mean outcomes between unprivileged and privileged groups = %f' %
+          dm.mean_difference())
+    print('Test set: SPD in outcomes between unprivileged and privileged groups = %f' % dm.statistical_parity_difference())
+    print('Test set: DI in outcomes between unprivileged and privileged groups = %f' % dm.disparate_impact())
     print('done')
