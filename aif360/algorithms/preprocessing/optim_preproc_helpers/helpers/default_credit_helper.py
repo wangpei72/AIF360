@@ -140,7 +140,7 @@ def normal_to_0_99(df, col_name):
     df.loc[df[col_name] > 99, col_name] = 99
 
 def normal_to_99_99(df, col_name):
-    normal_to_a_b(df, col_name, -99, 99)
+    normal_to_a_b(df, col_name, 200, 0)
 
 
 def do_c_days_from_compas(df, col_name):
@@ -241,7 +241,7 @@ if __name__ == '__main__':
     all_protected_attribute_maps = {'X2': {1: 'Male', 0: 'Female'}}
     label_maps = {1: 'yes', 0: 'no'}
 
-    df = pd.read_csv('../../../data/raw/default/default_of_credit_card_clients.csv', sep=',', header=[0], skiprows=[1])
+    df = pd.read_csv('../../../../data/raw/default/default_of_credit_card_clients.csv', sep=',', header=[0], skiprows=[1])
     df.drop('Unnamed: 0',axis=1, inplace=True)
     df['Y'] = df['Y'].replace({'yes': 1, 'no': 0})
     df['X2'] = df['X2'].replace({1: 1, 2: 0})

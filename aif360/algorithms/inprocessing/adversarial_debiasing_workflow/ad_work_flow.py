@@ -47,11 +47,12 @@ def train_adversary_debiasing_mods_dnn5(dataset_orig,
                                         unprivileged_groups = [{'sex': 0}]):
     dataset_orig_train, dataset_orig_test = dataset_orig.split([0.8], shuffle=False)
     sess = tf.Session()
+    print('train plain model starts...')
     plain_model = AdversarialDebiasingDnn5(
         privileged_groups=privileged_groups,
         unprivileged_groups=unprivileged_groups,
         scope_name='plain_classifier',
-        num_epochs=5,
+        num_epochs=1000,
         debias=False,
         dataset_d_name=dataset_d_name,
         sess=sess)
@@ -63,7 +64,7 @@ def train_adversary_debiasing_mods_dnn5(dataset_orig,
     debiased_model = AdversarialDebiasingDnn5(privileged_groups=privileged_groups,
                                               unprivileged_groups=unprivileged_groups,
                                               scope_name='debiased_classifier',
-                                              num_epochs=5,
+                                              num_epochs=1000,
                                               debias=True,
                                               dataset_d_name=dataset_d_name,
                                               sess=sess)

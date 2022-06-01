@@ -586,9 +586,9 @@ def load_preproc_data_default(protected_attributes=None):
         df = dchp.work_flow(df, y_labels=Y_features, age_div_10=age_div_10,
                        skip_feat=skip_feat, norm_0_99=norm_0_99,
                        norm_99_99=norm_99_99, norm_1_99=norm_1_99)
-        # hp.wrt_descrip_txt(df, 'default', Y_feat=Y_features, D_feat=D_features,
-        #                        Y_map=label_maps, D_map=all_protected_attribute_maps,
-        #                        P_map=all_privileged_classes)
+        hp.wrt_descrip_txt(df, 'default', Y_feat=Y_features, D_feat=D_features,
+                               Y_map=label_maps, D_map=all_protected_attribute_maps,
+                               P_map=all_privileged_classes)
         return df
 
     XD_features = ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10'

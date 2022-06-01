@@ -1,12 +1,12 @@
 import numpy as np
 
-
 from aif360.load_model.util_functions import gradient_graph
 
 try:
     import tensorflow.compat.v1 as tf
 except ImportError as error:
     from logging import warning
+
     warning("{}: AdversarialDebiasing will be unavailable. To install, run:\n"
             "pip install 'aif360[AdversarialDebiasing]'".format(error))
 
@@ -16,6 +16,7 @@ from aif360.utils.utils_tf import *
 from aif360.load_model.tutorial_models import dnn
 
 FLAGS = flags.FLAGS
+
 
 class AdversarialDebiasingDnn5(Transformer):
     """
@@ -33,9 +34,10 @@ class AdversarialDebiasingDnn5(Transformer):
                  batch_size=128,
                  classifier_num_hidden_units=200,
                  debias=True,
-                 save = True,
-                 convert = True,
+                 save=True,
+                 convert=True,
                  dataset_d_name='adult_race',
+                 model_type='dnn5'
                  ):
         super(AdversarialDebiasingDnn5, self).__init__(
             unprivileged_groups=unprivileged_groups,
@@ -59,9 +61,11 @@ class AdversarialDebiasingDnn5(Transformer):
         self.save = save
         self.convert = convert
         self.dataset_d_name = dataset_d_name
-        self.orig_model_path = '../../../org-model/' + dataset_d_name + '/' + str(self.num_epochs - 1) + '/test.model'
-        self.adebias_model_path = '../../../adebias-model/' + dataset_d_name + '/' + str(self.num_epochs - 1) + '/test.model'
-
+        self.model_type = model_type
+        self.orig_model_path = '../../../org-model/' + dataset_d_name + '/' + model_type + '/' + str(
+            self.num_epochs - 1) + '/test.model'
+        self.adebias_model_path = '../../../adebias-model/' + dataset_d_name + '/' + model_type + '/' + str(
+            self.num_epochs - 1) + '/test.model'
 
         self.features_dim = None
         self.features_ph = None
@@ -72,7 +76,6 @@ class AdversarialDebiasingDnn5(Transformer):
         self.pred_logits = None
         self.preds_symbolic_output = None
         self.classifier_model = None
-
 
     def _classifier_model(self, features, features_dim, keep_prob):
         """Compute the classifier predictions for the outcome variable.
@@ -104,7 +107,8 @@ class AdversarialDebiasingDnn5(Transformer):
                                  initializer=tf.initializers.glorot_uniform(seed=self.seed4))
             b2 = tf.Variable(tf.zeros(shape=[1]), name='b2')
 
-            pred_protected_attribute_logit = tf.matmul(tf.concat([s, s * true_labels, s * (1.0 - true_labels)], axis=1), W2) + b2
+            pred_protected_attribute_logit = tf.matmul(tf.concat([s, s * true_labels, s * (1.0 - true_labels)], axis=1),
+                                                       W2) + b2
             pred_protected_attribute_label = tf.sigmoid(pred_protected_attribute_logit)
 
             return pred_protected_attribute_label, pred_protected_attribute_logit
@@ -128,11 +132,10 @@ class AdversarialDebiasingDnn5(Transformer):
             saver = tf.train.Saver()
             saver.save(self.sess, save_path)
             print("Completed model training and saved at: " +
-                         str(save_path))
+                  str(save_path))
             self.model_path = save_path
         else:
             print("Completed model training.")
-
 
     def fit(self, dataset):
         """Compute the model parameters of the fair classifier using gradient
@@ -147,8 +150,8 @@ class AdversarialDebiasingDnn5(Transformer):
         if tf.executing_eagerly():
             # 在紧急执行的模式下，汇报运行时错误，因为对抗去偏不是即时工作的，需要在脚本开头加上关闭该模式的声明
             raise RuntimeError("AdversarialDebiasing does not work in eager "
-                    "execution mode. To fix, add `tf.disable_eager_execution()`"
-                    " to the top of the calling script.")
+                               "execution mode. To fix, add `tf.disable_eager_execution()`"
+                               " to the top of the calling script.")
 
         if self.seed is not None:
             np.random.seed(self.seed)
@@ -161,8 +164,8 @@ class AdversarialDebiasingDnn5(Transformer):
         # dataset.labels应该是一个nparray 下列temp_labels应该是对所有的 所有在源标签中是fav的 temptabels数组的该行， 第1列数值赋值为1
         # 是unfav标签的行，的第一列处，赋值为0
         # convert_labels[(dataset.labels == dataset.favorable_label).ravel(), :]
-        temp_labels[(dataset.labels == dataset.favorable_label).ravel(),0] = 1.0
-        temp_labels[(dataset.labels == dataset.unfavorable_label).ravel(),0] = 0.0
+        temp_labels[(dataset.labels == dataset.favorable_label).ravel(), 0] = 1.0
+        temp_labels[(dataset.labels == dataset.unfavorable_label).ravel(), 0] = 0.0
 
         with tf.variable_scope(self.scope_name):
             # scopename在类构造时必须传入，个人理解表示是原来的分类器还是adversary的训练参数空间
@@ -174,9 +177,9 @@ class AdversarialDebiasingDnn5(Transformer):
             # 真实标签 维度也是1
             # keep_prob dropout函数中的参数
             self.features_ph = tf.placeholder(tf.float32, shape=[None, self.features_dim])
-            self.protected_attributes_ph = tf.placeholder(tf.float32, shape=[None,1])
-            self.true_labels_ph = tf.placeholder(tf.float32, shape=[None,1])
-            self.true_labels_ph_2d = tf.placeholder(tf.float32, shape=[None,2])
+            self.protected_attributes_ph = tf.placeholder(tf.float32, shape=[None, 1])
+            self.true_labels_ph = tf.placeholder(tf.float32, shape=[None, 1])
+            self.true_labels_ph_2d = tf.placeholder(tf.float32, shape=[None, 2])
             self.keep_prob = tf.placeholder(tf.float32)
 
             # Obtain classifier predictions and classifier loss
@@ -184,7 +187,8 @@ class AdversarialDebiasingDnn5(Transformer):
             # 预测的标签， 预测的logits
             self.pred_labels, pred_logits = self._classifier_model(self.features_ph, self.features_dim, self.keep_prob)
             self.pred_logits = pred_logits
-            pred_labels_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=self.true_labels_ph_2d, logits=pred_logits))
+            pred_labels_loss = tf.reduce_mean(
+                tf.nn.sigmoid_cross_entropy_with_logits(labels=self.true_labels_ph_2d, logits=pred_logits))
 
             if self.debias:
                 # debias是逻辑控制开关，表示是否是去偏模式
@@ -194,7 +198,8 @@ class AdversarialDebiasingDnn5(Transformer):
                 # 输出二敏感属性logits是adver模型的输出，
                 # 输入一 predlogits分类器带出来的logits，相当于y_
                 # 输入二 真是的标签 即y
-                pred_protected_attributes_labels, pred_protected_attributes_logits = self._adversary_model(pred_logits, self.true_labels_ph)
+                pred_protected_attributes_labels, pred_protected_attributes_logits = self._adversary_model(pred_logits,
+                                                                                                           self.true_labels_ph)
                 # 敏感属性的损失，tf的reducemean函数 内嵌一个交叉熵，输入标签是敏感属性的placeholder ，logits是预测的敏感属性logits即输出二
                 pred_protected_attributes_loss = tf.reduce_mean(
                     tf.nn.sigmoid_cross_entropy_with_logits(labels=self.protected_attributes_ph,
@@ -221,15 +226,16 @@ class AdversarialDebiasingDnn5(Transformer):
                 # Update classifier parameters
                 # 更新分类器的参数，首先要
                 # 记录adver的梯度，由预测敏感属性的loss，和保存分类器的vars数组作为adver优化器计算梯度的函数的参数传入
-                adversary_grads = {var: grad for (grad, var) in adversary_opt.compute_gradients(pred_protected_attributes_loss,
-                                                                                      var_list=classifier_vars)}
+                adversary_grads = {var: grad for (grad, var) in
+                                   adversary_opt.compute_gradients(pred_protected_attributes_loss,
+                                                                   var_list=classifier_vars)}
             # 这一步标准化 这里用了lambda表达式，即匿名函数，相当于传入了一个参数x的函数， 返回的是x / (tf.norm(x) + np.finfo(np.float32).tiny)
             # normalize是一个函数？！！确实，下面有调用
             normalize = lambda x: x / (tf.norm(x) + np.finfo(np.float32).tiny)
 
             classifier_grads = []
             # 创立一个空列表来接受分类器的梯度
-            for (grad,var) in classifier_opt.compute_gradients(pred_labels_loss, var_list=classifier_vars):
+            for (grad, var) in classifier_opt.compute_gradients(pred_labels_loss, var_list=classifier_vars):
                 # 算法的理论核心 修改adver的grad值
                 # g是分类器的梯度 h是adver的梯度
                 if self.debias:
@@ -251,7 +257,8 @@ class AdversarialDebiasingDnn5(Transformer):
                 with tf.control_dependencies([classifier_minimizer]):
                     # 控制依赖的with语句，会先执行classifier_minimizer的操作，在执行下面的
                     # adver的minimizer ader的优化器 调用函数是minimize 输入预测的敏感属性目前的loss var列表为adver_vars,不需要加上全局step
-                    adversary_minimizer = adversary_opt.minimize(pred_protected_attributes_loss, var_list=adversary_vars)#, global_step=global_step)
+                    adversary_minimizer = adversary_opt.minimize(pred_protected_attributes_loss,
+                                                                 var_list=adversary_vars)  # , global_step=global_step)
 
             # sess开始run，feed 如全局变量初始化器和局部变量初始化器
             self.sess.run(tf.global_variables_initializer())
@@ -261,27 +268,30 @@ class AdversarialDebiasingDnn5(Transformer):
             # 开始训练
             for epoch in range(self.num_epochs):
                 shuffled_ids = np.random.choice(num_train_samples, num_train_samples, replace=False)
-                for i in range(num_train_samples//self.batch_size):
-                    batch_ids = shuffled_ids[self.batch_size*i: self.batch_size*(i+1)]
+                for i in range(num_train_samples // self.batch_size):
+                    batch_ids = shuffled_ids[self.batch_size * i: self.batch_size * (i + 1)]
                     batch_features = dataset.features[batch_ids]
                     batch_labels_2d = convert_labels[batch_ids]
-                    batch_labels = np.reshape(temp_labels[batch_ids], [-1,1])
+                    batch_labels = np.reshape(temp_labels[batch_ids], [-1, 1])
                     batch_protected_attributes = np.reshape(dataset.protected_attributes[batch_ids][:,
-                                                 dataset.protected_attribute_names.index(self.protected_attribute_name)], [-1,1])
+                                                            dataset.protected_attribute_names.index(
+                                                                self.protected_attribute_name)], [-1, 1])
 
                     batch_feed_dict = {self.features_ph: batch_features,
                                        self.true_labels_ph: batch_labels,
-                                       self.true_labels_ph_2d:batch_labels_2d ,
+                                       self.true_labels_ph_2d: batch_labels_2d,
                                        self.protected_attributes_ph: batch_protected_attributes,
                                        self.keep_prob: 0.8}
                     if self.debias:
-                        _, _, pred_labels_loss_value, pred_protected_attributes_loss_vale = self.sess.run([classifier_minimizer,
-                                       adversary_minimizer,
-                                       pred_labels_loss,
-                                       pred_protected_attributes_loss], feed_dict=batch_feed_dict)
+                        _, _, pred_labels_loss_value, pred_protected_attributes_loss_vale = self.sess.run(
+                            [classifier_minimizer,
+                             adversary_minimizer,
+                             pred_labels_loss,
+                             pred_protected_attributes_loss], feed_dict=batch_feed_dict)
                         if i % 200 == 0:
-                            print("epoch %d; iter: %d; batch classifier loss: %f; batch adversarial loss: %f" % (epoch, i, pred_labels_loss_value,
-                                                                                     pred_protected_attributes_loss_vale))
+                            print("epoch %d; iter: %d; batch classifier loss: %f; batch adversarial loss: %f" % (
+                            epoch, i, pred_labels_loss_value,
+                            pred_protected_attributes_loss_vale))
                     else:
                         _, pred_labels_loss_value = self.sess.run(
                             [classifier_minimizer,
@@ -289,14 +299,16 @@ class AdversarialDebiasingDnn5(Transformer):
 
                         if i % 200 == 0:
                             print("epoch %d; iter: %d; batch classifier loss: %f" % (
-                            epoch, i, pred_labels_loss_value))
+                                epoch, i, pred_labels_loss_value))
             if self.save:
                 if self.debias:
-                    self.save_model('../../../adebias-model/'+ self.dataset_d_name  + '/', 'test.model')
-                    self.adebias_model_path = '../../../adebias-model/' +self.dataset_d_name + '/' + str(self.num_epochs - 1) + '/test.model'
+                    self.save_model('../../../adebias-model/' + self.dataset_d_name + '/dnn5/', 'test.model')
+                    self.adebias_model_path = '../../../adebias-model/' + self.dataset_d_name + '/dnn5/' + str(
+                        self.num_epochs - 1) + '/test.model'
                 else:
-                    self.save_model('../../../org-model/' + self.dataset_d_name + '/', 'test.model')
-                    self.orig_model_path = '../../../org-model/'+ self.dataset_d_name + '/' + str(self.num_epochs - 1) + '/test.model'
+                    self.save_model('../../../org-model/' + self.dataset_d_name + '/dnn5/', 'test.model')
+                    self.orig_model_path = '../../../org-model/' + self.dataset_d_name + '/dnn5/' + str(
+                        self.num_epochs - 1) + '/test.model'
         return self
 
     def my_normalize(self, x):
@@ -305,8 +317,8 @@ class AdversarialDebiasingDnn5(Transformer):
     def fit_without_train(self, dataset):
         if tf.executing_eagerly():
             raise RuntimeError("AdversarialDebiasing does not work in eager "
-                    "execution mode. To fix, add `tf.disable_eager_execution()`"
-                    " to the top of the calling script.")
+                               "execution mode. To fix, add `tf.disable_eager_execution()`"
+                               " to the top of the calling script.")
 
         if self.seed is not None:
             np.random.seed(self.seed)
@@ -315,27 +327,28 @@ class AdversarialDebiasingDnn5(Transformer):
 
         temp_labels = dataset.labels.copy()
         convert_labels = self.get_convert_two_dims_labels(dataset)
-        temp_labels[(dataset.labels == dataset.favorable_label).ravel(),0] = 1.0
-        temp_labels[(dataset.labels == dataset.unfavorable_label).ravel(),0] = 0.0
+        temp_labels[(dataset.labels == dataset.favorable_label).ravel(), 0] = 1.0
+        temp_labels[(dataset.labels == dataset.unfavorable_label).ravel(), 0] = 0.0
 
         with tf.variable_scope(self.scope_name):
             num_train_samples, self.features_dim = np.shape(dataset.features)
 
             # Setup placeholders 设立tf的placeholder 相当于在建立计算的图
             self.features_ph = tf.placeholder(tf.float32, shape=[None, self.features_dim])
-            self.protected_attributes_ph = tf.placeholder(tf.float32, shape=[None,1])
-            self.true_labels_ph = tf.placeholder(tf.float32, shape=[None,1])
-            self.true_labels_ph_2d = tf.placeholder(tf.float32, shape=[None,2])
+            self.protected_attributes_ph = tf.placeholder(tf.float32, shape=[None, 1])
+            self.true_labels_ph = tf.placeholder(tf.float32, shape=[None, 1])
+            self.true_labels_ph_2d = tf.placeholder(tf.float32, shape=[None, 2])
             self.keep_prob = tf.placeholder(tf.float32)
 
             # Obtain classifier predictions and classifier loss
             self.pred_labels, pred_logits = self._classifier_model(self.features_ph, self.features_dim, self.keep_prob)
             self.pred_logits = pred_logits
-            pred_labels_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=self.true_labels_ph_2d, logits=pred_logits))
+            pred_labels_loss = tf.reduce_mean(
+                tf.nn.sigmoid_cross_entropy_with_logits(labels=self.true_labels_ph_2d, logits=pred_logits))
 
             if self.debias:
-
-                pred_protected_attributes_labels, pred_protected_attributes_logits = self._adversary_model(pred_logits, self.true_labels_ph)
+                pred_protected_attributes_labels, pred_protected_attributes_logits = self._adversary_model(pred_logits,
+                                                                                                           self.true_labels_ph)
                 pred_protected_attributes_loss = tf.reduce_mean(
                     tf.nn.sigmoid_cross_entropy_with_logits(labels=self.protected_attributes_ph,
                                                             logits=pred_protected_attributes_logits))
@@ -351,12 +364,13 @@ class AdversarialDebiasingDnn5(Transformer):
             classifier_vars = [var for var in tf.trainable_variables() if 'classifier_model' in var.name]
             if self.debias:
                 adversary_vars = [var for var in tf.trainable_variables() if 'adversary_model' in var.name]
-                adversary_grads = {var: grad for (grad, var) in adversary_opt.compute_gradients(pred_protected_attributes_loss,
-                                                                                      var_list=classifier_vars)}
+                adversary_grads = {var: grad for (grad, var) in
+                                   adversary_opt.compute_gradients(pred_protected_attributes_loss,
+                                                                   var_list=classifier_vars)}
             # normalize = lambda x: x / (tf.norm(x) + np.finfo(np.float32).tiny)
 
             classifier_grads = []
-            for (grad,var) in classifier_opt.compute_gradients(pred_labels_loss, var_list=classifier_vars):
+            for (grad, var) in classifier_opt.compute_gradients(pred_labels_loss, var_list=classifier_vars):
 
                 if self.debias:
                     unit_adversary_grad = self.my_normalize(adversary_grads[var])
@@ -369,21 +383,22 @@ class AdversarialDebiasingDnn5(Transformer):
 
             if self.debias:
                 with tf.control_dependencies([classifier_minimizer]):
-                    adversary_minimizer = adversary_opt.minimize(pred_protected_attributes_loss, var_list=adversary_vars)
+                    adversary_minimizer = adversary_opt.minimize(pred_protected_attributes_loss,
+                                                                 var_list=adversary_vars)
 
             self.sess.run(tf.global_variables_initializer())
             self.sess.run(tf.local_variables_initializer())
         return self
 
     def fit_and_pred(self, dataset, dataset_test, graph_dir=
-                     '../org-model-merge/adult/graphlog'):
+    '../org-model-merge/adult/graphlog'):
         self.fit(dataset)
 
         tf.train.write_graph(self.sess.graph_def, graph_dir, 'testmodel.pbtxt')
 
-        dataset_new_train, dataset_new_test = self.predict_with_load_gra(dataset), self.predict_with_load_gra(dataset_test)
+        dataset_new_train, dataset_new_test = self.predict_with_load_gra(dataset), self.predict_with_load_gra(
+            dataset_test)
         return dataset_new_train, dataset_new_test
-
 
     def predict(self, dataset):
         num_test_samples, _ = np.shape(dataset.features)
@@ -429,9 +444,9 @@ class AdversarialDebiasingDnn5(Transformer):
     def predict_with_load_gra(self, dataset):
         self.fit_without_train(dataset)
         if self.debias:
-                model_path = self.adebias_model_path
+            model_path = self.adebias_model_path
         else:
-                model_path = self.orig_model_path
+            model_path = self.orig_model_path
 
         # saver = tf.train.Saver()
         saver = tf.train.import_meta_graph(model_path + '.meta')
@@ -451,28 +466,28 @@ class AdversarialDebiasingDnn5(Transformer):
             batch_ids = np.arange(start, end)
             batch_features = dataset.features[batch_ids]
             batch_labels_2d = self.get_convert_two_dims_labels(dataset)[batch_ids]
-            batch_labels = np.reshape(dataset.labels[batch_ids], [-1,1])
+            batch_labels = np.reshape(dataset.labels[batch_ids], [-1, 1])
             batch_protected_attributes = np.reshape(dataset.protected_attributes[batch_ids][:,
-                                         dataset.protected_attribute_names.index(self.protected_attribute_name)], [-1,1])
+                                                    dataset.protected_attribute_names.index(
+                                                        self.protected_attribute_name)], [-1, 1])
 
             batch_feed_dict = {self.features_ph: batch_features,
                                self.true_labels_ph: batch_labels,
                                self.true_labels_ph_2d: batch_labels_2d,
                                self.protected_attributes_ph: batch_protected_attributes
-                            }
+                               }
             batch_preds = self.sess.run(self.preds_symbolic_output, feed_dict=batch_feed_dict)
             pred_labels += np.argmax(batch_preds, axis=1).tolist()
-            probs += self.sess.run(self.pred_labels, feed_dict=batch_feed_dict)[:,1].tolist()
+            probs += self.sess.run(self.pred_labels, feed_dict=batch_feed_dict)[:, 1].tolist()
             logits += self.sess.run(self.pred_logits, feed_dict=batch_feed_dict).tolist()
             # pred_labels += self.sess.run(self.pred_labels, feed_dict=batch_feed_dict)[:,0].tolist()
             samples_covered += len(batch_features)
 
         # Mutated, fairer dataset with new labels
-        dataset_new = dataset.copy(deepcopy = True)
+        dataset_new = dataset.copy(deepcopy=True)
         # 在这里 被提供的数据集的label被重新赋值了，可以基于此计算几个公平性指标，真的有点绕啊
         dataset_new.scores = np.array(probs, dtype=np.float64).reshape(-1, 1)
-        dataset_new.labels = (np.array(pred_labels)).astype(np.float64).reshape(-1,1)
-
+        dataset_new.labels = (np.array(pred_labels)).astype(np.float64).reshape(-1, 1)
 
         # Map the dataset labels to back to their original values.
         temp_labels = dataset_new.labels.copy()
