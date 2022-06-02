@@ -40,11 +40,13 @@ unpri_cond_map = {
              'meps15_race': [{'RACE': 0}],
              'meps16_race': [{'RACE': 0}]
 }
+model_type_list = ['dnn1', 'dnn3', 'dnn5', 'dnn7', 'dnn9']
 
 def train_adversary_debiasing_mods_dnn5(dataset_orig,
                                         dataset_d_name,
                                         privileged_groups = [{'sex': 1}],
-                                        unprivileged_groups = [{'sex': 0}]):
+                                        unprivileged_groups = [{'sex': 0}],
+                                        model_type='dnn5'):
     dataset_orig_train, dataset_orig_test = dataset_orig.split([0.8], shuffle=False)
     sess = tf.Session()
     print('train plain model starts...')
@@ -52,10 +54,11 @@ def train_adversary_debiasing_mods_dnn5(dataset_orig,
         privileged_groups=privileged_groups,
         unprivileged_groups=unprivileged_groups,
         scope_name='plain_classifier',
-        num_epochs=1000,
+        num_epochs=2,
         debias=False,
         dataset_d_name=dataset_d_name,
-        sess=sess)
+        sess=sess,
+        model_type=model_type)
     plain_model.fit(dataset_orig_train)
     sess.close()
     tf.reset_default_graph()
@@ -64,26 +67,44 @@ def train_adversary_debiasing_mods_dnn5(dataset_orig,
     debiased_model = AdversarialDebiasingDnn5(privileged_groups=privileged_groups,
                                               unprivileged_groups=unprivileged_groups,
                                               scope_name='debiased_classifier',
-                                              num_epochs=1000,
+                                              num_epochs=2,
                                               debias=True,
                                               dataset_d_name=dataset_d_name,
-                                              sess=sess)
+                                              sess=sess,
+                                              model_type=model_type)
     debiased_model.fit(dataset_orig_train)
 
 
 def main():
-    for i in range(len(dataset_with_d_list)):
-        print('==============current dataset is %s ==================' % dataset_with_d_list[i])
-        dataset_orig = load_preproc_data(dataset_with_d_list[i])
-        train_adversary_debiasing_mods_dnn5(dataset_orig,
-                                            dataset_d_name=dataset_with_d_list[i],
-                                            privileged_groups=pri_cond_map[dataset_with_d_list[i]],
-                                            unprivileged_groups=unpri_cond_map[dataset_with_d_list[i]])
-    print('done with all ')
+    for i in range(0, 5): # 5 个
+        print('==============current dataset is %s id %d ==================' % (dataset_with_d_list[i], i))
+        for j in range(len(model_type_list)):
+            print('>>>>>>>>model type DNN'+ str(2*(j+1)-1) + '<<<<<<<<<<')
+            dataset_orig = load_preproc_data(dataset_with_d_list[i])
+            train_adversary_debiasing_mods_dnn5(dataset_orig,
+                                                dataset_d_name=dataset_with_d_list[i],
+                                                privileged_groups=pri_cond_map[dataset_with_d_list[i]],
+                                                unprivileged_groups=unpri_cond_map[dataset_with_d_list[i]],
+                                                model_type=model_type_list[j])
+
+    print('done with one - five dataset')
+    # for i in range(5, 11): # 6 个
+    #     print('==============current dataset is %s id %d ==================' % (dataset_with_d_list[i], i))
+    #     for j in range(len(model_type_list)):
+    #         print('>>>>>>>>model type DNN'+ str(2*(j+1)-1) + '<<<<<<<<<<')
+    #         dataset_orig = load_preproc_data(dataset_with_d_list[i])
+    #         train_adversary_debiasing_mods_dnn5(dataset_orig,
+    #                                             dataset_d_name=dataset_with_d_list[i],
+    #                                             privileged_groups=pri_cond_map[dataset_with_d_list[i]],
+    #                                             unprivileged_groups=unpri_cond_map[dataset_with_d_list[i]],
+    #                                             model_type=model_type_list[j])
+    #
+    # print('done with six - 11 dataset')
 
 
 if __name__ == '__main__':
     main()
-
+    # for i in range(0, 3):
+    #     print(i)
 
 

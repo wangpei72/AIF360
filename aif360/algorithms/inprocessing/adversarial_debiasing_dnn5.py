@@ -13,7 +13,7 @@ except ImportError as error:
 from aif360.algorithms import Transformer
 from tensorflow.python.platform import flags
 from aif360.utils.utils_tf import *
-from aif360.load_model.tutorial_models import dnn
+from aif360.load_model.tutorial_models import dnn5, dnn1, dnn3, dnn7, dnn9
 
 FLAGS = flags.FLAGS
 
@@ -86,9 +86,25 @@ class AdversarialDebiasingDnn5(Transformer):
                 nb_classes = 2
             else:
                 nb_classes = 1
-            model = dnn(input_shape=(None, features_dim), nb_classes=nb_classes)
-            dnn5 = model(features)
-            self.preds_symbolic_output = dnn5
+            if self.model_type == 'dnn1':
+                model = dnn1(input_shape=(None, features_dim), nb_classes=nb_classes)
+                dnn = model(features)
+            elif self.model_type == 'dnn3':
+                model = dnn3(input_shape=(None, features_dim), nb_classes=nb_classes)
+                dnn = model(features)
+            elif self.model_type == 'dnn7':
+                model = dnn7(input_shape=(None, features_dim), nb_classes=nb_classes)
+                dnn = model(features)
+            elif self.model_type == 'dnn9':
+                model = dnn9(input_shape=(None, features_dim), nb_classes=nb_classes)
+                dnn = model(features)
+            else:
+                assert self.model_type == 'dnn5'
+                model = dnn5(input_shape=(None, features_dim), nb_classes=nb_classes)
+                dnn = model(features)
+
+
+            self.preds_symbolic_output = dnn
             self.classifier_model = model
             pred_logit = model.get_logits(features)
             get_probs = model.get_probs(features)
@@ -302,12 +318,12 @@ class AdversarialDebiasingDnn5(Transformer):
                                 epoch, i, pred_labels_loss_value))
             if self.save:
                 if self.debias:
-                    self.save_model('../../../adebias-model/' + self.dataset_d_name + '/dnn5/', 'test.model')
-                    self.adebias_model_path = '../../../adebias-model/' + self.dataset_d_name + '/dnn5/' + str(
+                    self.save_model('../../../adebias-model/' + self.dataset_d_name + '/'+ self.model_type +'/', 'test.model')
+                    self.adebias_model_path = '../../../adebias-model/' + self.dataset_d_name +  '/'+ self.model_type +'/' + str(
                         self.num_epochs - 1) + '/test.model'
                 else:
-                    self.save_model('../../../org-model/' + self.dataset_d_name + '/dnn5/', 'test.model')
-                    self.orig_model_path = '../../../org-model/' + self.dataset_d_name + '/dnn5/' + str(
+                    self.save_model('../../../org-model/' + self.dataset_d_name +  '/'+ self.model_type +'/', 'test.model')
+                    self.orig_model_path = '../../../org-model/' + self.dataset_d_name +  '/'+ self.model_type +'/' + str(
                         self.num_epochs - 1) + '/test.model'
         return self
 
