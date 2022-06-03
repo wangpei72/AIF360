@@ -54,7 +54,7 @@ def train_adversary_debiasing_mods_dnn5(dataset_orig,
         privileged_groups=privileged_groups,
         unprivileged_groups=unprivileged_groups,
         scope_name='plain_classifier',
-        num_epochs=2,
+        num_epochs=1000,
         debias=False,
         dataset_d_name=dataset_d_name,
         sess=sess,
@@ -67,7 +67,7 @@ def train_adversary_debiasing_mods_dnn5(dataset_orig,
     debiased_model = AdversarialDebiasingDnn5(privileged_groups=privileged_groups,
                                               unprivileged_groups=unprivileged_groups,
                                               scope_name='debiased_classifier',
-                                              num_epochs=2,
+                                              num_epochs=1000,
                                               debias=True,
                                               dataset_d_name=dataset_d_name,
                                               sess=sess,
@@ -76,7 +76,7 @@ def train_adversary_debiasing_mods_dnn5(dataset_orig,
 
 
 def main():
-    for i in range(0, 5): # 5 个
+    for i in range(3, 11): # 8 个
         print('==============current dataset is %s id %d ==================' % (dataset_with_d_list[i], i))
         for j in range(len(model_type_list)):
             print('>>>>>>>>model type DNN'+ str(2*(j+1)-1) + '<<<<<<<<<<')
@@ -87,7 +87,7 @@ def main():
                                                 unprivileged_groups=unpri_cond_map[dataset_with_d_list[i]],
                                                 model_type=model_type_list[j])
 
-    print('done with one - five dataset')
+    print('done with four to eleven dataset')
     # for i in range(5, 11): # 6 个
     #     print('==============current dataset is %s id %d ==================' % (dataset_with_d_list[i], i))
     #     for j in range(len(model_type_list)):

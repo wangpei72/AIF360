@@ -50,8 +50,8 @@ def construct_d_maps(dataset_with_d_name='adult_race'):
 
 def construct_p_up_group(dataset_with_d_name='adult_race'):
     y, d, p, up = amh.get_all_map_item_from_txt()
-    all_privileged_classes = {d[dataset_with_d_name]: (p[dataset_with_d_name])}
-    all_unprivileged_classes = {d[dataset_with_d_name]: (up[dataset_with_d_name])}
+    all_privileged_classes = {d[dataset_with_d_name]: int(p[dataset_with_d_name])}
+    all_unprivileged_classes = {d[dataset_with_d_name]: int(up[dataset_with_d_name])}
     p = [all_privileged_classes]
     u = [all_unprivileged_classes]
     return p, u
@@ -159,14 +159,19 @@ def structring_classification_dataset_from_npy_array(x_, y_, pre_,
         unp_pro_attrs = [[1.0, 2.0]]
         p_pro_attrs = [[3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]]
         meta_pro_attr_maps = [all_protected_attribute_maps[x] for x in [D_features]]
+        u = [{'age': 1}, {'age': 2}]
+        p = [{'age': 3}, {'age': 4}, {'age': 5}, {'age': 6}, {'age': 7}, {'age': 8}, {'age': 9}]
     elif dataset_with_d_name in ['heart_age']:
         unp_pro_attrs = [[3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]]
         p_pro_attrs = [[1.0, 2.0]]
         meta_pro_attr_maps = [all_protected_attribute_maps[x] for x in [D_features]]
+        u = [{'age': 4}, {'age': 5}, {'age': 6}, {'age': 7}, {'age': 8}, {'age': 9}]
+        p = [{'age': 1}, {'age': 2}, {'age': 3}]
     else:
         unp_pro_attrs = [[convert(all_unprivileged_classes, x) for x in [D_features]]]
         p_pro_attrs = [[convert(all_privileged_classes, x) for x in [D_features]]]
         meta_pro_attr_maps = [all_protected_attribute_maps[x] for x in [D_features]]
+        p, u = construct_p_up_group(dataset_with_d_name=dataset_with_d_name)
     orig_dataset = BinaryLabelDataset(favorable_label=1,
                                       unfavorable_label=0,
                                       df=df,
@@ -191,7 +196,8 @@ def structring_classification_dataset_from_npy_array(x_, y_, pre_,
                                          metadata={'label_maps': [{1: 'favorable', 0: 'unfavorable'}],
                                                    'protected_attribute_maps': meta_pro_attr_maps}
                                          )
-    p, u = construct_p_up_group(dataset_with_d_name=dataset_with_d_name)
+
+
     dm = ClassificationMetric(orig_dataset, predict_dataset, unprivileged_groups=u, privileged_groups=p)
     if print_bool:
         print(
@@ -207,12 +213,12 @@ def structring_classification_dataset_from_npy_array(x_, y_, pre_,
               % dm.accuracy())
 
         print(
-            'Test set: pos_nums in outcomes between unprivileged and privileged groups = %f' % dm.num_positives())
+            'Test set: +++pos_nums  = %f' % dm.num_positives())
         print(
-            'Test set: pre_pos_nums in outcomes between unprivileged and privileged groups = %f' % dm.num_pred_positives())
-        print('Test set: neg_nums in outcomes between unprivileged and privileged groups = %f'
+            'Test set: ++_pre_pos_nums in predict = %f' % dm.num_pred_positives())
+        print('Test set: ---neg_nums  = %f'
               % dm.num_negatives())
-        print('Test set: average odds diff in outcomes between unprivileged and privileged groups = %f'
+        print('Test set: --_num negtives in predict = %f'
               % dm.num_pred_negatives())
 
     return dm
